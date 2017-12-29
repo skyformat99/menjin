@@ -1,0 +1,243 @@
+[DebugChecksum]
+Checksum=953208463
+[DisAssemblyWindow]
+NumStates=_ 1
+State 1=_ 1
+[InstructionProfiling]
+Enabled=_ 0
+[CodeCoverage]
+Enabled=_ 0
+[Profiling]
+Enabled=0
+[StackPlugin]
+Enabled=1
+OverflowWarningsEnabled=1
+WarningThreshold=90
+SpWarningsEnabled=1
+WarnHow=0
+UseTrigger=1
+TriggerName=main
+LimitSize=0
+ByteLimit=50
+[MemoryMap]
+Enabled=0
+Base=0
+UseAuto=0
+TypeViolation=1
+UnspecRange=1
+ActionState=1
+[TraceHelper]
+Enabled=0
+ShowSource=1
+[JLinkDriver]
+WatchCond=_ 0
+Watch0=_ 0 "" 0 "" 0 "" 0 "" 0 0 0 0
+Watch1=_ 0 "" 0 "" 0 "" 0 "" 0 0 0 0
+SWOInfo_CpuClock=0x044AA200
+SWOInfo_SWOClockAutoDetect=0
+SWOInfo_JtagSpeed=0x001E8480
+SWOInfo_SWOPrescaler=0x00000024
+SWOInfo_SWOClockWanted=0x001E8480
+SWOInfo_HWTraceEnabled=0
+SWOInfo_TimestampsEnabled=0
+SWOInfo_TimestampsPrescalerIndex=0x00000000
+SWOInfo_TimestampsPrescalerData=0x00000000
+SWOInfo_PCSamplingEnabled=0
+SWOInfo_PCSamplingCYCTAP=0x00000001
+SWOInfo_PCSamplingPOSTCNT=0x0000000F
+SWOInfo_DataLogMode=0x00000000
+SWOInfo_CPIEnabled=0
+SWOInfo_EXCEnabled=0
+SWOInfo_SLEEPEnabled=0
+SWOInfo_LSUEnabled=0
+SWOInfo_FOLDEnabled=0
+SWOInfo_EXCTRCEnabled=0
+SWOInfo_ITMPortsEnabled=0x00000000
+SWOInfo_ITMPortsTermIO=0x00000000
+SWOInfo_ITMPortsLogFile=0x00000000
+SWOInfo_ITMLogFile=$PROJ_DIR$\ITM.log
+CStepIntDis=_ 0
+TraceBufferSize=0x00010000
+TraceStallIfFIFOFull=0x00000000
+TracePortSize=0x00000004
+[TraceHelperExtra]
+Enabled=0
+ShowSource=1
+[Breakpoints]
+Bp0=_ "STD_CODE" "{C:\Documents and Settings\Administrator\桌面\MP3模块\MP3_SD_FAT\User\src\mp3player.c}.520.32@1" 1 0 0 0 "" 0 "" 0
+Bp1=_ "STD_CODE" "{C:\Documents and Settings\Administrator\桌面\MP3模块\MP3_SD_FAT\User\src\VS10XX.c}.77.2@1" 1 0 0 0 "" 0 "" 0
+Count=2
+[Stack]
+FillEnabled=0
+OverflowWarningsEnabled=1
+WarningThreshold=90
+SpWarningsEnabled=1
+WarnLogOnly=1
+UseTrigger=1
+TriggerName=main
+LimitSize=0
+ByteLimit=50
+[Exceptions]
+StopOnUncaught=_ 0
+StopOnThrow=_ 0
+[CallStack]
+ShowArgs=0
+[Disassembly]
+MixedMode=1
+[SWOTraceHWSettings]
+OverrideDefaultClocks=0
+CpuClock=48000000
+ClockAutoDetect=1
+ClockWanted=6000000
+JtagSpeed=6000000
+Prescaler=8
+TimeStampPrescIndex=0
+TimeStampPrescData=0
+PcSampCYCTAP=1
+PcSampPOSTCNT=15
+PcSampIndex=0
+DataLogMode=0
+ITMportsEnable=0
+ITMportsTermIO=0
+ITMportsLogFile=0
+ITMlogFile=$PROJ_DIR$\ITM.log
+[Interrupts]
+Enabled=1
+[MemConfig]
+Base=1
+Manual=0
+Ddf=1
+TypeViol=0
+Stop=1
+[Simulator]
+Freq=10000000
+MultiCoreRunAll=1
+[struct_types]
+Fmt0=HeatRecord-keepwarm	3	0
+Fmt1=HeatRecord-level	3	0
+Fmt2=HeatRecord-temp	3	0
+[array_types]
+Fmt0=char[11]	4	0
+Fmt1=u8[16]	4	0
+Fmt2=u8[20]	3	0
+Fmt3=u8[21]	4	0
+Fmt4=u8[4]	4	0
+Fmt5=u8[512]	5	0
+Fmt6=u8[64]	5	0
+Fmt7=u8[7]	4	0
+Fmt8=u8[8]	4	0
+[watch_formats]
+Fmt0={W}1:CWaterWeight	3	0
+Fmt1={W}1:Connect_Service	3	0
+Fmt2={W}1:FactorSign	3	0
+Fmt3={W}1:Heat	3	0
+Fmt4={W}1:Rcv_Boil	3	0
+Fmt5={W}1:Rcv_OrderHour	3	0
+Fmt6={W}1:Rcv_OrderMin	3	0
+Fmt7={W}1:Rcv_OrderSec	3	0
+Fmt8={W}1:Rcv_OrderWeek	1	0
+Fmt9={W}1:Rcv_Purify	3	0
+Fmt10={W}1:Rcv_WarmTime	3	0
+Fmt11={W}1:Rcv_Warmtemp	3	0
+Fmt12={W}1:StateTime	3	0
+Fmt13={W}1:TDay	3	0
+Fmt14={W}1:THour	3	0
+Fmt15={W}1:TMin	3	0
+Fmt16={W}1:TMon	3	0
+Fmt17={W}1:TSec	3	0
+Fmt18={W}1:TWeek	3	0
+Fmt19={W}1:TYear	3	0
+Fmt20={W}1:Tel_action	3	0
+Fmt21={W}1:Tel_boil	3	0
+Fmt22={W}1:Tel_keepwarm	3	0
+Fmt23={W}1:Tel_purify	3	0
+Fmt24={W}1:Tel_temp	3	0
+Fmt25={W}1:Tel_week	1	0
+Fmt26={W}1:Warm	3	0
+Fmt27={W}1:Warmtemp	3	0
+Fmt28={W}1:WaterTemp	3	0
+Fmt29={W}1:WaterWeight	3	0
+Fmt30={W}1:wtmp	3	0
+Fmt31={W}1:wtmp2	3	0
+Fmt32={W}1:wtmppre	3	0
+[Trace1]
+Enabled=0
+ShowSource=1
+[Trace2]
+Enabled=0
+ShowSource=0
+[SWOTraceWindow]
+PcSampling=0
+InterruptLogs=0
+ForcedTimeStamps=0
+EventCPI=0
+EventEXC=0
+EventFOLD=0
+EventLSU=0
+EventSLEEP=0
+[PowerLog]
+LogEnabled=0
+GraphEnabled=0
+ShowTimeLog=1
+ShowTimeSum=0
+Title_0=I0
+Symbol_0=0 4 1
+LiveEnabled=0
+LiveFile=PowerLogLive.log
+[DataLog]
+LogEnabled=0
+SumEnabled=0
+GraphEnabled=0
+ShowTimeLog=1
+ShowTimeSum=1
+[EventLog]
+LogEnabled=0
+SumEnabled=0
+GraphEnabled=0
+ShowTimeLog=1
+ShowTimeSum=1
+SumSortOrder=0
+[InterruptLog]
+LogEnabled=0
+SumEnabled=0
+GraphEnabled=0
+ShowTimeLog=1
+ShowTimeSum=1
+SumSortOrder=0
+[Disassemble mode]
+mode=0
+[Breakpoints2]
+Count=0
+[Log file]
+LoggingEnabled=_ 0
+LogFile=_ ""
+Category=_ 0
+[TermIOLog]
+LoggingEnabled=_ 0
+LogFile=_ ""
+[Aliases]
+A0=_ "C:\Program Files\IAR Systems\Embedded Workbench 7.0\arm\inc\c\DLib_Product_string.h" ""
+A1=_ "C:\Users\Administrator\Desktop\11-21SG\DOORLCD\User\src\OLED\oled.c" "C:\Users\Administrator\Desktop\HZQ11-30\DOORLCD\User\src\OLED\oled.c"
+A2=_ "C:\Users\yao20\Desktop\DOORLCD171111\Libraries\CMSIS\Device\ST\STM32F0xx\Source\Templates\iar\startup_stm32f0xx.s" ""
+A3=_ "D:\GIT\DOORLCD\Libraries\CMSIS\Device\ST\STM32F0xx\Source\Templates\iar\startup_stm32f0xx.s" ""
+A4=_ "D:\GIT\DOORLCD\Libraries\STM32F0xx_StdPeriph_Driver\src\stm32f0xx_rcc.c" ""
+A5=_ "D:\GIT\DOORLCD\User\src\OLED\mfrc522.c" ""
+A6=_ "D:\GIT\DOORLCD\User\src\main.c" ""
+A7=_ "E:\星弈硬件项目文档\陈超项目交接\门控\door-17-07GSMv1\Libraries\STM32F0xx_StdPeriph_Driver\src\stm32f0xx_rcc.c" ""
+A8=_ "H:\program\SmartTeapot\soft\soft\SmartTeaPot1031_v11pcb\User\src\main.c" "I:\program\SmartTeapot\soft\soft\SmartTeaPot1031_v11pcb\User\src\main.c"
+A9=_ "H:\program\SmartTeapot\soft\soft\martTeaPot1017\Libraries\STM32F10x_StdPeriph_Driver\src\stm32f10x_exti.c" ""
+A10=_ "H:\program\SmartTeapot\soft\soft\martTeaPot1017\User\src\main.c" "E:\Program\SmartTeapot\soft\SmartTeaPot1017\User\src\main.c"
+Count=11
+SuppressDialog=1
+[CallStackLog]
+Enabled=0
+[PowerProbe]
+Frequency=10000
+Probe0=I0
+ProbeSetup0=2 1 1 2 0 0
+[DriverProfiling]
+Enabled=0
+Mode=3
+Graph=0
+Symbiont=0
+Exclusions=

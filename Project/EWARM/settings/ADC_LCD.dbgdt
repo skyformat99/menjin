@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<Project>
+  <Desktop>
+    <Static>
+      <Debug-Log>
+        
+        
+      <PreferedWindows><Position>3</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows/></PreferedWindows><ColumnWidth0>20</ColumnWidth0><ColumnWidth1>1307</ColumnWidth1></Debug-Log>
+      <Build>
+        
+        
+        
+        
+      <PreferedWindows><Position>3</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows><Window><Factory>Find-in-Files</Factory></Window></Windows></PreferedWindows><ColumnWidth0>20</ColumnWidth0><ColumnWidth1>980</ColumnWidth1><ColumnWidth2>261</ColumnWidth2><ColumnWidth3>65</ColumnWidth3></Build>
+      <Workspace>
+        <ColumnWidths>
+          
+          
+          
+          
+        <Column0>309</Column0><Column1>27</Column1><Column2>27</Column2><Column3>27</Column3></ColumnWidths>
+      </Workspace>
+      <Disassembly>
+        
+        
+        
+      <MixedMode>1</MixedMode><CodeCovShow>0</CodeCovShow><InstrProfShow>0</InstrProfShow><PreferedWindows><Position>2</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows/></PreferedWindows><col-names><item>Disassembly</item><item>_I0</item></col-names><col-widths><item>500</item><item>20</item></col-widths><DisasmHistory/><ShowCodeCoverage>1</ShowCodeCoverage><ShowInstrProfiling>1</ShowInstrProfiling></Disassembly>
+      <Watch>
+        <Format>
+          <struct_types><Fmt><Key>FileInfoStruct-F_Type</Key><Value>4</Value></Fmt></struct_types>
+          <watch_formats>
+            
+            
+          <Fmt><Key>{W}Watch-0:Data</Key><Value>5</Value></Fmt><Fmt><Key>{W}Watch-0:value</Key><Value>4</Value></Fmt><Fmt><Key>{W}Watch-0:value1</Key><Value>4</Value></Fmt></watch_formats>
+        </Format>
+        
+        
+        
+        
+      <Column0>100</Column0><Column1>100</Column1><Column2>100</Column2><Column3>100</Column3></Watch>
+    <TerminalIO><PreferedWindows><Position>2</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows/></PreferedWindows><InputSource>1</InputSource><InputMode>10</InputMode><Filename>$PROJ_DIR$\TermIOInput.txt</Filename><InputEcho>1</InputEcho><ShowReset>0</ShowReset></TerminalIO><Register><PreferedWindows><Position>2</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows/></PreferedWindows></Register><WATCH_1><expressions><item>Temperature</item><item>WaterTemp</item><item>Heat</item><item>Warmtemp</item><item>Warm</item><item>WarmTime</item><item>ADC_ConvertedValue</item><item>Weight</item><item>WaterWeight</item><item>CWaterWeight</item><item>CommRcvBuf</item><item>OrderTable</item><item>Pure_Time</item><item>WarmOK</item><item>MachineID</item><item>RcvDate</item><item>OffLineTime</item><item>FactorSign</item><item>Connect_Service</item><item>StatusBuff</item><item>WarmOK</item><item>Pure_Time</item><item>PhoneID</item><item>App_OnLine</item><item>Orderid</item><item>TYear</item><item>TMon</item><item>TDay</item><item>THour</item><item>TMin</item><item>TSec</item><item>TWeek</item><item>AdcConValue1</item><item>AdcConValue2</item><item>k</item><item>Factor_Set_Sign</item><item>WEIGHT_VERIFY</item><item>wtmp</item><item>wtmp2</item><item>StateTime</item><item>RecordNum</item><item>i</item><item>TryConnectWan</item><item>Key_Buff</item><item>UartSend_Buffer2</item><item>failtime</item><item>OffLineTime</item><item>UpdateState</item><item>TestHobTime</item><item>AdcConValue1</item><item>AdcConValue2</item><item>nowhubstate</item><item>MachineID</item><item>UmbrellaID</item><item>CommRcvBuf1</item><item>CommRcvBuf</item><item>str_tmp</item><item>ReadIDSign</item><item>num</item><item>CommRcvBufIO</item><item>key_key_buf</item><item>buf</item><item>buf</item><item/></expressions><col-names><item>Expression</item><item>Location</item><item>Type</item><item>Value</item></col-names><col-widths><item>149</item><item>150</item><item>100</item><item>174</item></col-widths><PreferedWindows><Position>2</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows><Window><Factory>Disassembly</Factory></Window></Windows></PreferedWindows></WATCH_1><QuickWatch><PreferedWindows><Position>2</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows/></PreferedWindows><col-names><item>Expression</item><item>Location</item><item>Type</item><item>Value</item></col-names><col-widths><item>150</item><item>150</item><item>100</item><item>580</item></col-widths><QWatchHistory><item>Usart1_buf</item><item>cacheLog</item><item>str_buf</item><item>tempString</item><item>preString</item><item>src</item><item>Usart2_buf</item><item>d</item><item>s</item><item>p</item><item>NULL != p</item><item>buf</item><item>status</item></QWatchHistory></QuickWatch><Select-Ambiguous-Definitions><PreferedWindows><Position>3</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows/></PreferedWindows><ColumnWidth0>464</ColumnWidth0><ColumnWidth1>66</ColumnWidth1><ColumnWidth2>796</ColumnWidth2></Select-Ambiguous-Definitions><Memory><PreferedWindows><Position>3</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows/></PreferedWindows><FindDirection>1</FindDirection><FindAsHex>0</FindAsHex></Memory><Locals><PreferedWindows><Position>2</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows><Window><Factory>WATCH_1</Factory></Window></Windows></PreferedWindows><col-names><item>Location</item><item>Type</item><item>Value</item><item>Variable</item></col-names><col-widths><item>150</item><item>100</item><item>100</item><item>100</item></col-widths></Locals><WATCH_2><expressions><item/></expressions><col-names><item>Expression</item><item>Location</item><item>Type</item><item>Value</item></col-names><col-widths><item>100</item><item>150</item><item>100</item><item>100</item></col-widths><PreferedWindows><Position>2</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows><Window><Factory>WATCH_1</Factory></Window></Windows></PreferedWindows></WATCH_2><SymbolicMemory><PreferedWindows><Position>0</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows/></PreferedWindows><zone>Flash</zone><col-names><item>Data</item><item>Location</item><item>Type</item><item>Value</item><item>Variable</item></col-names><col-widths><item>100</item><item>100</item><item>100</item><item>100</item><item>100</item></col-widths><SymMemHistory><item>80008000</item><item>80000000</item></SymMemHistory></SymbolicMemory><SYMLIST><PreferedWindows><Position>1</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows/></PreferedWindows></SYMLIST><Find-All-Declarations><PreferedWindows><Position>3</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows><Window><Factory>Build</Factory></Window></Windows></PreferedWindows><ColumnWidth0>470</ColumnWidth0><ColumnWidth1>67</ColumnWidth1><ColumnWidth2>806</ColumnWidth2></Find-All-Declarations><Find-in-Files><PreferedWindows><Position>3</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows><Window><Factory>Debug-Log</Factory></Window></Windows></PreferedWindows><ColumnWidth0>377</ColumnWidth0><ColumnWidth1>62</ColumnWidth1><ColumnWidth2>566</ColumnWidth2><ColumnWidth3>251</ColumnWidth3></Find-in-Files></Static>
+    <Windows>
+      
+      
+      
+      
+    <Wnd3>
+        <Tabs>
+          <Tab>
+            <Identity>TabID-9166-2139</Identity>
+            <TabName>Workspace</TabName>
+            <Factory>Workspace</Factory>
+            <Session>
+              
+            <NodeDict><ExpandedNode>ADC_LCD</ExpandedNode><ExpandedNode>ADC_LCD/MP3</ExpandedNode><ExpandedNode>ADC_LCD/SYS</ExpandedNode><ExpandedNode>ADC_LCD/User</ExpandedNode></NodeDict></Session>
+          </Tab>
+        </Tabs>
+        
+      <SelectedTab>0</SelectedTab></Wnd3><Wnd4><Tabs><Tab><Identity>TabID-29519-15800</Identity><TabName>Terminal I/O</TabName><Factory>TerminalIO</Factory><Session/></Tab></Tabs><SelectedTab>0</SelectedTab></Wnd4><Wnd5><Tabs><Tab><Identity>TabID-6428-6131</Identity><TabName>Debug Log</TabName><Factory>Debug-Log</Factory><Session/></Tab></Tabs><SelectedTab>0</SelectedTab></Wnd5></Windows>
+    <Editor>
+      
+      
+      
+      
+    <Pane/><ActivePane>0</ActivePane><Sizes><Pane><X>1000000</X><Y>1000000</Y></Pane></Sizes><SplitMode>1</SplitMode></Editor>
+    <Positions>
+      
+      
+      
+      
+      
+    <Top><Row0><Sizes><Toolbar-094572D8><key>debuggergui.enu1</key></Toolbar-094572D8></Sizes></Row0><Row1><Sizes><Toolbar-09456338><key>armjlink.enu1</key></Toolbar-09456338></Sizes></Row1><Row2><Sizes><Toolbar-049D6D68><key>iaridepm.enu1</key></Toolbar-049D6D68></Sizes></Row2></Top><Left><Row0><Sizes><Wnd3><Rect><Top>-2</Top><Left>-2</Left><Bottom>346</Bottom><Right>383</Right><x>-2</x><y>-2</y><xscreen>98</xscreen><yscreen>420</yscreen><sizeHorzCX>76563</sizeHorzCX><sizeHorzCY>659341</sizeHorzCY><sizeVertCX>300781</sizeVertCX><sizeVertCY>546311</sizeVertCY></Rect></Wnd3></Sizes></Row0></Left><Right><Row0><Sizes><Wnd4><Rect><Top>-2</Top><Left>-2</Left><Bottom>346</Bottom><Right>363</Right><x>-2</x><y>-2</y><xscreen>367</xscreen><yscreen>456</yscreen><sizeHorzCX>286719</sizeHorzCX><sizeHorzCY>715856</sizeHorzCY><sizeVertCX>285156</sizeVertCX><sizeVertCY>546311</sizeVertCY></Rect></Wnd4></Sizes></Row0></Right><Bottom><Row0><Sizes><Wnd5><Rect><Top>-2</Top><Left>-2</Left><Bottom>198</Bottom><Right>1282</Right><x>-2</x><y>-2</y><xscreen>1284</xscreen><yscreen>200</yscreen><sizeHorzCX>1003125</sizeHorzCX><sizeHorzCY>313972</sizeHorzCY><sizeVertCX>156250</sizeVertCX><sizeVertCY>313972</sizeVertCY></Rect></Wnd5></Sizes></Row0></Bottom><Float><Sizes/></Float></Positions>
+  </Desktop>
+</Project>
+
+

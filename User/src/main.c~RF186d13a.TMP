@@ -1,0 +1,2089 @@
+/******************** (C) COPYRIGHT 2007 STMicroelectronics ********************
+* File Name          : main.c
+* Author             : MCD Application Team
+* Version            : V1.0
+* Date               : 10/08/2007
+* Description        : Main program body
+********************************************************************************
+* THE PRESENT SOFTWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS
+* WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE TIME.
+* AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY DIRECT,
+* INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING FROM THE
+* CONTENT OF SUCH SOFTWARE AND/OR THE USE MADE BY CUSTOMERS OF THE CODING
+* INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
+*******************************************************************************/
+
+/* Includes ------------------------------------------------------------------*/
+#include "stm32f0xx.h"
+#include <PlayMode.h>
+#include "hardware_conf.h"
+#include <stdio.h>
+#include <delay.h>
+#include <string.h>
+#include "InitIQS333.h"
+#include "oled.h"
+#include "bmp.h"
+#include "mfrc522.h"
+#include "string.h"
+#include "time.h"
+/* Private typedef -----------------------------------------------------------*/
+/* Private define ------------------------------------------------------------*/
+
+//#define   ONLINE_SERVICE 
+
+
+
+GetUmb GetUmbTable[10];
+u8 GetResultNum = 0;
+ReturnUmb ReturnUmbTable[10];
+u8 ReturnNum = 0;
+u8 PollingOk = 0;
+u8 PollingTime = POLLINGTIME;
+
+u8 Rev_ok = 0;
+u8 exit_set = 0;
+extern u8 USRT_Buffer[7];
+u16 Temperature, Weight, testvalue;
+u8 Reconnectcount=0;
+
+//new defined valuable as below
+u8 Heat;         // heat sign
+u8 Warm;         // keep warm sign
+u8 Warmtemp;     // keep warm temp valuable
+u8 Warmheat;     // heating inorder to keep warm sign
+u8 CheckTime;    // 0.5S check a time
+u8 ledstate;     // use led slight
+u8 WarmEnable;   // can start warm operation?usually enable after heat complete?
+u8 HeatCRC;      // temp compare?after turn off heat device
+u8 WaterTemp;    // real-time water temperature
+u8 WaterWeight;
+u8 CWaterWeight;
+u8 HeatCRCStart; //start temp compare?after turn off heat device 15S
+u8 HeatCRCTime;  //Timer, =0 start temp compare
+u8 FirstCRC;     //
+u8 Telecontrol;  //wifi Telecontrol
+u8 Keycontrol;   // Keyboard operation
+u16 LightHeatOffTime;
+u8 WarmOK;
+u32 WarmTime;
+u8 Mystate, MystatePre;
+u8 bFlagOK;
+u8 TeaPotHub;
+u8 Pre_TeaPotHub;
+u8 Factor_Set_Sign;
+u8 EnCool;
+u8 EnSendHubState;
+u16 TimeSendHubState;
+u8 Connect_Service;
+u8 FactorSign;
+u8 cmdmode;
+u16 DelayNum10ms = 0;
+u8 WifiConnectok = 0;
+u16 OffLineTime;
+u16 Read_RequstTime;
+u8 Read_Requst;
+u8 Finish = 0;
+u16 FinishTime = 0;
+u8 StartTime = 0;
+u8 ModeReadOk = 0;
+u8 WifiMode = 0;
+u8 Keyend = 0;
+u8 App_OnLine = 1;
+u8 RelayOn = 0;
+u32 RelayOnTime;
+u8 TryConnectWan = 0;
+u16 TryConnectWanTime = 0;
+u8 TimeSync = 0;
+u8 FirstPowerOn;
+u8 Weight_Verf_Sign;
+u16 WEIGHT_VERIFY;
+u8 KeyEvent = 0;
+u8 nowhubstate;
+u8 ActWeightVerf = 0;
+u8 WarmHeatTime = 0;
+
+u16 Pure_Time;
+u8 Start_Pure = 0;
+u8 SendTime = 0;
+/***for test**/
+u16 failtime = 0;
+u16 restartcount = 0;
+u16 TestHobTime = 0;
+u8 displaying = 0;
+extern u8 beepwarm;
+extern u8 StartWeightVref;
+extern u16 ProtectTime;
+extern u8 TempRenew;
+
+//u8   KeyPress[7];
+u8 RenewListEn = 0;
+u8 Purify = 0;
+u8 Boil = 0;
+u8 CommRcvBuf[300];
+u8 CommRcvBufIO[16];
+u8 bFlagOKm = 0;
+u8 UartSend_Buffer1[300];
+u8 UartSend_BufferIO[16];
+u8 RecvWifiCmd[64];
+u8 *RecvWifiCmdEnd;
+u8 RcvDate[30];
+u8 disbuf[3];
+u8 ReadIDSign = 0;
+//u8 WaterWeight_tb[64];
+//u8 *WaterWeight_tbstart,*WaterWeight_tbend;
+u8 adcok;
+
+
+u8 Ordernum = 0;
+
+HeatRecord RecordTable[10];
+u8 RecordNum = 0;
+
+u8 TeleWarmTime = 0;
+
+u8 LastTime[15] = "20141021143005";
+u8 MachineID[19] = "220205014116080000";
+
+
+//uc8 MachineID_Default[19]="220205014116085500";//机器码
+uc8 MachineID_Default[19] = "220205014116080880";
+unsigned int usart1_lent_old = 0, usart1_lent = 0, usart1_read_en = 0;
+u8 Usart1_buf[200];
+unsigned int usart2_lent_old = 0, usart2_lent = 0, usart2_read_en = 0;
+u8 Usart2_buf[200];
+u8 str_buf[200];
+u8 Usart2_buf_old[200];
+u8 UmbrellaID[19] = {0};
+u8 Orderid[17];
+u8 Operation;
+u16 StateTime = 0;
+u8 OrderOperState = 0;
+u16 RcvokTime = 60;
+
+u8 TYear;
+u8 TMon;
+u8 TDay;
+u8 THour;
+u8 TMin;
+u8 TSec;
+u8 TWeek;
+u32 SecondTime;
+u8 UpdateState;
+u8 wtmp, wtmppre;
+u8 wtmp2 = 0;
+u8 KeyEnable;
+u8 Key_end_Telecontrol = 0;
+u8 WifiLight = 0;
+u8 LED_Buff[8] = {
+        0x1f,
+        0x1f,
+        0x1f,
+        0x1f,
+        0x1f,
+        0x1f,
+        0x1f,
+        0x1f,};
+
+//new defined valuable as up
+
+/* Private macro -------------------------------------------------------------*/
+/* Private variables ---------------------------------------------------------*/
+
+u16 ADC_ConvertedValue[64];
+u8 NumberOfAD = 0;
+
+u16 adcconvertime = 0;
+
+#define read_mp3 GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_6)
+#define MP3_ON_OFF(tmp)               GPIOB->ODR=tmp?(GPIOB->ODR|1<<12):(GPIOB->ODR&(~(1<<12)))
+
+//int isDebug = 0;
+#define _DEBUG_ 0
+#if _DEBUG_
+#define ACCLOG(...) printf(__VA_ARGS__)
+#else
+#define ACCLOG(...)
+#endif
+
+/* Private function prototypes -----------------------------------------------*/
+void RCC_Configuration(void);
+
+void GPIO_Configuration(void);
+
+void NVIC_Configuration(void);
+
+void USART_Configuration(void);
+
+void RTC_Configuration(void);
+
+void Init_ADC(void);
+
+void IWDG_Configuration(void);
+
+void Leddisp(u8 tempvalue, u8 state);
+
+void Init_Exit(void);
+
+//u8 TempAdjust(u8 temp);
+void ADConverData(void);
+
+void Heat_Offline(void);
+
+void Heat_Online(void);
+
+void CommProc3(void);
+
+void WifiSendData(u8 num);
+//static int get_parmer(unsigned char *str,unsigned char *name,unsigned char *context,unsigned char chr);
+
+void Rst_Value(void);
+
+void http_send(u8 *sendbuf, u8 *path);
+
+void DelayN10ms(u16 time);
+
+void set_mode(u8 mode);
+
+void WaitConnect(void);
+
+void SwithChannel(u8 num);
+
+//void CheckOrder(void);
+void TIM3_Init();
+
+void TIM2_Init();
+
+void TIM6_Int_Init(u16 arr, u16 psc);
+
+//u16 AD_sysGetAdcResult(u8 Channel);
+//void Get_ADC_Value(void);
+u8 TempRef(u8 tempnow);
+
+u8 ObjVref(u8 tempobj);
+
+void Init_I2C(void);
+
+void Init_IQS333(void);
+
+u8 I2C1_Write_NBytes(u8 driver_Addr, u8 start_Addr, u8 number_Bytes, u8 *write_Buffer);
+
+u8 I2C1_Read_NBytes(u8 driver_Addr, u8 start_Addr, u8 number_Bytes, u8 *read_Buffer);
+
+void KeyProcess(void);
+
+void Restart_WifiMode(void);
+
+u8 SrvDataProcess(u8 number);
+
+void SendToLock(u8 id, u8 num);
+
+char check_scan(void);
+
+int find_car_new(int, int);
+
+void printhextobin(char c);
+
+void getNumber();
+
+void sendMessage(int);
+
+/* Private functions ---------------------------------------------------------*/
+
+void Init_Value(void) {
+    //u8 i;
+    Heat = 0;      // heat sign
+    Warm = 0;      // keep warm sign
+    Warmtemp = 0;  // keep warm temp valuable
+    Warmheat = 0;
+    CheckTime = 0;
+    ledstate = 1;
+    WarmEnable = 0;
+    EnCool = 0;
+    HeatCRC = 0;
+    Temperature = 0;
+    WaterTemp = 0;
+    WaterWeight = 0;
+    HeatCRCStart = 0;
+    HeatCRCTime = 0;
+    FirstCRC = 0;
+    Telecontrol = 0;
+    Keycontrol = 0;
+    LightHeatOffTime = 0;
+    WarmOK = 0;
+    WarmTime = 0;
+    Pure_Time = 0;
+    adcok = 0;
+    Mystate = 0;
+    MystatePre = 0;
+    bFlagOK = 0;
+    TeaPotHub = 0;
+    Pre_TeaPotHub = 0;
+    //memset(OrderTable,0,sizeof(HeatInfo)*16);
+    memset(RecordTable, 0, sizeof(HeatRecord) * 10);  //Orderid
+
+    memset(Orderid, 0, 17);
+    Factor_Set_Sign = 0;
+    EnSendHubState = 0;
+    TimeSendHubState = 0;
+    RecvWifiCmdEnd = RecvWifiCmd;
+    cmdmode = 0;
+    DelayNum10ms = 0;
+    FirstPowerOn = 1;
+    App_OnLine = 1;
+    Weight_Verf_Sign = 0;
+    wtmp = 0;
+    wtmppre = 0;
+
+    TYear = 10;
+    TMon = 1;
+    TDay = 1;
+    THour = 8;
+    TMin = 0;
+    TSec = 0;
+    TWeek = 5;
+    SecondTime = THour * 3600;
+    UpdateState = 0;
+    KeyEnable = 30;
+    TestHobTime = 100;
+
+    memset(ReturnUmbTable, 0, sizeof(ReturnUmbTable));
+    memset(GetUmbTable, 0, sizeof(GetUmbTable));
+
+    //for(i=0;i<64;i++)
+    //{
+    // WaterWeight_tb[i]=0;
+    //}
+    //WaterWeight_tbstart=WaterWeight_tbend=WaterWeight_tb;
+}
+
+void delay(u16 num) {
+    u16 i, j;
+    for (i = 0; i < num; i++)
+        for (j = 0; j < 0x1000; j++);
+}
+
+void Delay(uint16_t nCount) {
+    /* Decrement nCount value */
+    while (nCount != 0) {
+        nCount--;
+    }
+}
+
+/*******************************************************************************
+* Function Name  :
+* Description    : Main program
+* Input          : None
+* Output         : None
+* Return         : None
+*******************************************************************************/
+
+void IO_TXD(u8 Data) {
+    u8 i = 0;
+    OI_TXD(0);
+    delay_us(100);
+    for (i = 0; i < 8; i++) {
+        if (Data & 0x01)
+            OI_TXD(1);
+        else
+            OI_TXD(0);
+
+        delay_us(100);
+        Data = Data >> 1;
+    }
+    OI_TXD(1);
+    delay_us(100);
+}
+
+void USART_Send(u8 *buf, u8 len) {
+    u8 t;
+    for (t = 0; t < len; t++) {
+        IO_TXD(buf[t]);
+    }
+}
+
+int heart_num = 0;//??????????
+int count = 0;//??????gprs??
+int hardwareTime = 0;//????????????
+//int block=0;
+unsigned char snr, buf[16], TagType[2], SelectedSnr[4], DefaultKey[4][6] = {{0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
+                                                                            {0x70, 0x5e, 0xc2, 0x4d, 0x6a, 0x83},
+                                                                            {0x70, 0x5e, 0xc2, 0x4d, 0x6a, 0x83},
+                                                                            {0x70, 0x5e, 0xc2, 0x4d, 0x6a, 0x83}};//alien_key[6] ={'@','a', 'l', 'i', 'e', 'n'};
+//unsigned char buf_key[16]={'@','a', 'l', 'i', 'e', 'n',0xff,0x07,0x080,0x69,'@','a', 'l', 'i', 'e', 'n'}	;
+//unsigned char buf_key[16]={'1','1','1','1','1','1','1','1','1','1','1','1','1','1','1','1'};
+unsigned char buf_key[16] = {'4', '4', '4', '4', '4', '4', '5', '5', '5', '5', '5', '5', '5', '5', '5', '5'};
+char ki = 0;
+
+char carNumber[5];//??
+char overTime[6];//????
+char twoNumber[17];//?????
+int part = 1;//???????
+int swipe = 167;//刷卡密码
+char mostTime[6];//?????????
+char car_str[32];//???????
+int shanquCode = 3;
+int kuaiCode = 2;
+
+//????????????
+void printhextobin(char c) {
+    char x[17][5] = {
+            "0000", "0001", "0010", "0011",
+            "0100", "0101", "0110", "0111",
+            "1000", "1001", "1010", "1011",
+            "1100", "1101", "1110", "1111",
+    };
+    int n = 16;
+    if (c >= 'a' && c <= 'f') n = c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') n = c - 'A' + 10;
+    if (c >= '0' && c <= '9') n = c - '0';
+    // printf("%s", x[n]);
+    strcat(twoNumber, x[n]);
+}
+
+
+int find_car() {
+    return find_car_new(2, 0);
+}
+//获取卡片解密所需要的参数
+void getNumber() {
+//  swipe = 167;
+    if (swipe % 16 == 0) {
+        part = swipe / 16 - 1;
+    } else {
+        part = swipe / 16;
+    }
+
+    if (swipe / 16 <= 8) {
+        //        printf("diyi\n");
+        find_car_new(2, 2);
+    } else if (swipe / 16 <= 16) {
+        //        printf("dier\n");
+        part = part - 8;
+        shanquCode = 3;
+        kuaiCode = 0;
+    } else if (swipe / 16 <= 24) {
+        part = part - 16;
+        //        printf("disan\n");
+        shanquCode = 3;
+        kuaiCode = 1;
+    } else {
+        part = part - 24;
+        //        printf("disi\n");
+        shanquCode = 3;
+        kuaiCode = 2;
+    }
+}
+
+//读卡解密部分
+int jieMika(char src9[]) {
+    /*读卡解密部分 */
+
+    strncpy(carNumber, src9 + 1, 5);
+    //    printf("卡号：%s\n",carNumber);
+    strncpy(overTime, src9 + 14, 6);
+    //    printf("过期时间：%s\n",overTime);
+
+
+    char year[3];
+    char month[3];
+    char day[3];
+    strncpy(year, mostTime, 2);
+    strncpy(month, mostTime + 2, 2);
+    strncpy(day, mostTime + 4, 2);
+    //    printf("??%s,?:%s,??%s\n",year,month,day);
+
+
+    char year1[3];
+    char month1[3];
+    char day1[3];
+    strncpy(year1, overTime, 2);
+    strncpy(month1, overTime + 2, 2);
+    strncpy(day1, overTime + 4, 2);
+    //    printf("??%s,??%s,??%s\n",year1,month1,day1);
+    if (atoi(year) > atoi(year1)) {
+        //        printf("nian fen\n");
+        return 0;
+    } else if (atoi(month) > atoi(month1)) {
+        //        printf("yue fen\n");
+        return 0;
+    } else if (atoi(day) > atoi(day1)) {
+        //        printf("ri\n");
+        return 0;
+    } else {
+        //      printf("cheng gong\n");
+        return 1;
+    }
+}
+
+int check_carNumber(char src14[]) {
+    /* ????????? */
+    char kami[4];
+    strncpy(kami, src14 + (part * 4), 4);
+    // printf("???16????%s\n",kami);
+    memset((char *) &twoNumber, 0, sizeof(twoNumber));
+    for (int i = 0; i < 4; i++) {
+        printhextobin(kami[i]);
+    }
+    // printf("????????:%s\n", twoNumber);
+    int aa = swipe - swipe / 16 * 16;
+    char last[1];
+    strncpy(last, twoNumber + (aa - 1), 1);
+    if (atoi(last) == 0) {
+        //        printf("cheng gong\n");
+        return 1;
+    } else {
+        //        printf("shi bai\n");
+        return 0;
+    }
+}
+
+//读取卡的内容
+int find_car_new(int sanqu, int qukuai) {
+    char i;
+    char status;
+    char buf1[16];
+    status = PcdRequest(REQ_ALL, TagType);//?? ???0??
+    if (!status) {
+        status = PcdAnticoll(SelectedSnr);//???????????
+        if (!status) {
+            status = PcdSelect(SelectedSnr);//????
+            if (!status) {
+                snr = sanqu;
+                status = PcdAuthState(KEYA, (snr * 4 + 0), DefaultKey[sanqu], SelectedSnr);// ??0????
+                if (!status) {
+                    status = PcdRead((snr * 4 + qukuai), buf);  //PcdWrite((snr*4+1), buf);    // ??0??1???
+                    if (!status) {
+                        snr = sanqu = shanquCode;
+                        qukuai = kuaiCode;
+                        status = PcdAuthState(KEYA, (snr * 4 + 0), DefaultKey[sanqu], SelectedSnr);// ??0????
+                        if (!status) {
+                            status = PcdRead((snr * 4 + qukuai), buf1);  //PcdWrite((snr*4+1), buf);    // ??0??1???
+                            if (!status) {
+                                //LED(1);
+                                //???
+                                DOOR_PWR(1);
+                                DelayN10ms(60);
+                                DOOR_PWR(0);
+                                //                OPEN_SW(1);
+                                //                DelayN10ms(100);
+                                //                OPEN_SW(0);
+                                //UART_Send_Missage(buf);
+
+                                delay_10ms(20);
+                                memset((char *) &car_str, 0, sizeof(car_str));
+                                char tempChar[2];
+                                for (i = 0; i < 16; i++) {
+                                    int intNumber = (int) buf[i];
+                                    sprintf(tempChar, "%x", intNumber);
+                                    int isZero = (int) tempChar[1];
+                                    if (isZero == 0) {
+                                        sprintf(&car_str[i * 2], "%s", "0");
+                                        car_str[i * 2 + 1] = tempChar[0];
+                                    } else {
+                                        car_str[i * 2] = tempChar[0];
+                                        car_str[i * 2 + 1] = tempChar[1];
+                                    }
+                                }
+
+                                if (shanquCode != 0 && swipe != -1 && jieMika(car_str) == 1) {
+                                    memset((char *) &car_str, 0, sizeof(car_str));
+                                    for (i = 0; i < 16; i++) {
+                                        int intNumber = (int) buf1[i];
+                                        sprintf(tempChar, "%x", intNumber);
+                                        int isZero = (int) tempChar[1];
+                                        if (isZero == 0) {
+                                            sprintf(&car_str[i * 2], "%s", "0");
+                                            car_str[i * 2 + 1] = tempChar[0];
+                                        } else {
+                                            car_str[i * 2] = tempChar[0];
+                                            car_str[i * 2 + 1] = tempChar[1];
+                                        }
+                                    }
+
+                                    //if(isDebug) {
+                                    ACCLOG("find card:%s\n", car_str);
+                                    //}
+
+                                    if (check_carNumber(car_str) == 1) {
+                                        //            printf("????...\n");
+                                        //???????????????????
+                                        //UART_Send_Missage("AT+QTTS=2,\"???????!\"\r\n");
+                                        //            printf("????...\n");
+                                        //if(isDebug) {
+                                        ACCLOG("find card return:1\n");
+                                        //}
+                                        return 1;
+                                    } else {
+                                        //if(isDebug) {
+                                        ACCLOG("find card return:2\n");
+                                        //}
+                                        return 2;
+                                    }
+                                } else {
+                                    //if(isDebug) {
+                                    ACCLOG("find card return other:2 \n");
+                                    //}
+                                    return 2;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        return 0;
+    }
+    return 0;
+}
+
+char find_action(void) {
+    //if(isDebug) {
+    //    printf("find action...\n");
+    //}
+    if (find_car() == 1) {
+        return 1;
+    }else if(find_car() == 2){
+      return 2;
+    }
+    if (usart2_read_en == 1) {//????
+        if (memcmp((char *) &Usart2_buf, (char *) &Usart2_buf_old, sizeof(Usart2_buf)) == 0) {//??????
+            memset((char *) &Usart2_buf, 0, sizeof(Usart2_buf));
+            usart2_lent_old = usart2_lent = usart2_read_en = 0;
+
+        } else
+            return 2;
+    }
+    return 0;
+}
+
+int no_net_display = -1;//10ms
+char nonet_en = 0;
+
+void no_net_display_stop(void) {
+    /*if(no_net_display!=-1){
+  OLED_DrawBMP(0,0,128,8,best_use);
+  no_net_display=-1;
+}*/
+}
+
+void delay10_in_nonet(void) {
+    int re_stu;
+    DelayN10ms(1);
+    if (no_net_display < 200) {
+        re_stu = find_action();//???
+        if (re_stu != 0) {
+            no_net_display = 300;
+            memset((char *) &Usart2_buf_old, 0, sizeof(Usart2_buf_old));
+            memset((char *) &Usart2_buf, 0, sizeof(Usart2_buf));
+            usart2_lent_old = usart2_lent = usart2_read_en = 0;
+            DOOR_PWR(1);//2017-11-11  蜂鸣器
+            DelayN10ms(60);
+            DOOR_PWR(0);
+            if (re_stu == 1) { //开门
+                OPEN_SW(1);
+                DelayN10ms(100);
+                OPEN_SW(0);
+                OLED_DrawBMP(0, 0, 128, 8, door_ok);
+            } else {
+                if (check_scan() == 1) {//开门
+                    OPEN_SW(1);//2017-11-11  门锁
+                    DelayN10ms(100);
+                    OPEN_SW(0);
+                    OLED_DrawBMP(0, 0, 128, 8, door_ok);
+                } else
+                    OLED_DrawBMP(0, 0, 128, 8, error_door);
+            }
+            re_stu = 0;
+            memset((char *) &Usart2_buf_old, 0, sizeof(Usart2_buf_old));
+            memset((char *) &Usart2_buf, 0, sizeof(Usart2_buf));
+            usart2_lent_old = usart2_lent = usart2_read_en = 0;
+            re_stu = 0;
+        }
+    }
+    if (no_net_display == 0) {
+        OLED_DrawBMP(0, 0, 128, 8, best_use);
+        no_net_display = -1;
+    }
+
+}
+
+//重置gprs
+void reset_gprs(void) {
+    char i = 0;
+    GPRS_EN(1);
+    for (i = 0; i < 100; i++)delay10_in_nonet();
+    for (i = 0; i < 100; i++)delay10_in_nonet();
+    GPRS_EN(0);
+    for (i = 0; i < 100; i++)delay10_in_nonet();
+    no_net_display_stop();
+    count = 0;
+    //  UART_Send_Missage("AT+QIOPEN=\"TCP\",\"api.sunsyi.com\",5555\r\n");
+    //  UART_Send_Missage("AT\r\n");
+    //  UART_Send_Missage("AT+GSN\r\n");
+    //  UART_Send_Missage("AT+CPIN?\r\n");
+    //  UART_Send_Missage("AT+QIFGCNT=0\r\n");
+    //  UART_Send_Missage("AT+QIMODE=1\r\n");
+    //  UART_Send_Missage("AT+QIDEACT\r\n");
+    //  UART_Send_Missage("AT+QIMUX=0\r\n");
+    //  UART_Send_Missage("AT+QIDNSIP=1\r\n");
+    //printf("重启GPRS\n");
+}
+
+char key_num[35] = {32, 8, 20, 26, 29, 13, 12, 4, 22, 9, 24, 15, 5, 30, 10, 34, 31, 7, 2, 1, 14, 23, 27, 19, 18, 6, 28,
+                    35, 33, 3, 25, 21, 11, 17, 16};
+char key_key[60] = {32, 8, 20, 26, 29, 13, 12, 4, 22, 9, 24, 15, 5, 30, 10, 34, 31, 7, 2, 1, 14, 23, 27, 19, 18, 6, 28,
+                    35, 33, 3, 25, 21, 11, 17, 16, 0};
+char key_key_buf[36] = {32, 8, 20, 26, 29, 13, 12, 4, 22, 9, 24, 15, 5, 30, 10, 34, 31, 7, 2, 1, 14, 23, 27, 19, 18, 6,
+                        28, 35, 33, 3, 25, 21, 11, 17, 16, 0};
+char *p, *s, *d,*n,*f;
+char gprs_select_en = 1;
+char send_error_num = 0;
+char key_all_num = 0;
+char key_update = 0;
+long long time_key = 0, time_key_buf = 0, time_key_add = 0;
+u8 re_stu = 0;
+char net_stu = 0;
+
+u16 j;
+u8 str_tmp[4];
+u16 Flash_tmp[4];
+u8 SlaveID;
+
+
+#define NR(x)  (sizeof(x)/sizeof(x[0]))
+char myheartbeat[21];//保存
+char myTime[11];//硬件保存的时间戳(解密前)
+char myKey[11];//硬件保存的秘钥（解密前）
+char nowKey[11];//硬件保存的秘钥（解密后）
+
+char scanCode[21];//未解密用户信息
+char nowCode[21];//已解密用户信息
+char phone[12];//从二维码扫到的手机号
+char userTime[11];//从二维码扫到的时间戳
+char userKey[11];//从二维码扫到的未解密用户密钥
+char userNewKey[11];//从二维码扫到的解密用户密钥
+
+char admin_machineId[18];
+//char scanCode_admin[21];//未解密管理员信息
+//char nowCode_admin[21];//已解密管理员信息
+//char adminKey[11];//管理员解密前密钥;
+
+int jieMi21[21] = {19, 12, 15, 11, 8, 18, 13, 21, 3, 17, 10, 6, 16, 2, 9, 20, 7, 14, 4, 1, 5};//长解密规则
+int jieMi10[10] = {3, 1, 6, 8, 7, 10, 4, 9, 5, 2};//短解密规则
+
+
+char carNumber[5];//卡号
+char overTime[6];//过期时间
+
+
+
+void getHeartbeat(char src[]);
+
+void getCode(char myCode[],int admin);
+
+//心跳解密函数
+void getHeartbeat(char src[]) {
+    if (strlen(src) == 48 || strlen(src) == 51) {
+        if (strlen(src) == 51) {
+            char getLastThree[3];
+            strncpy(getLastThree, src + 46, 3);
+            swipe = atoi(getLastThree);
+            //printf("???:%d\n",swipe);
+        }
+        strncpy(myheartbeat, src + 20, 26);
+        strncpy(myKey, myheartbeat, 10);//???????
+        strncpy(myTime, myheartbeat + 10, 10);//?????
+        strncpy(mostTime, myheartbeat + 20, 6);//???????????
+        hardwareTime = 0;
+        //  printf("??????%s\n",myKey);
+        //printf("????%s\n",myTime);
+        //printf("6????:%s\n",mostTime);
+
+        char arr3[10];
+        //将密钥字符串转为字符数组
+        for (int i = 0; i < 10; i++) {
+            *(arr3 + i) = *(myKey + i);
+        }
+
+        char arr4[10];
+        //解密
+        for (int i = 0; i < 10; i++) {
+            arr4[i] = arr3[jieMi10[i] - 1];
+            // printf("%c",arr2[i]);
+        }
+
+        //将密钥字符拼接成字符串
+        for (int i = 0; i < NR(arr4); i++) {
+            nowKey[i] = arr4[i];
+        }
+    }
+}
+
+//扫码解密函数
+void getCode(char src2[],int admin) {
+
+    strncpy(scanCode, src2 + 6, 21);//获取未解密用户信息
+    char arr1[100];
+    //将未解密用户信息转为字符数组
+    for (int i = 0; i < 21; i++) {
+        *(arr1 + i) = *(scanCode + i);
+    }
+
+    char arr2[21];
+    //解密用户信息
+    for (int i = 0; i < 21; i++) {
+        arr2[i] = arr1[jieMi21[i] - 1];
+    }
+    //将用户信息拼接成字符串
+    for (int i = 0; i < NR(arr2); i++) {
+        nowCode[i] = arr2[i];
+    }
+
+    //  printf("已解密用户信息：%s\n",nowCode);
+    strncpy(phone, nowCode, 11);//获取手机号码
+    if(admin == 1)
+    {
+      hardwareTime = 0;
+      strncpy(myTime, nowCode + 11, 10); //重置时间戳
+      //printf("硬件当前时间:%s\n",myTime);
+    }else{
+      strncpy(userTime, nowCode + 11, 10); //获取时间戳
+    }
+}
+
+
+//检测心跳
+char check_ser(void) {
+    //TIM2_Init();
+    u8 i = 0;
+    p = strstr(Usart1_buf, "{\"status\":1,\"data\":\"");
+    s = strstr(Usart1_buf, "}");
+    //printf("心跳返回:%s\n",Usart1_buf);
+    //if (isDebug) {
+    ACCLOG("check ser comming...\n");
+    //}
+    if ((NULL != p && NULL != s)) {
+        count = 0;
+        //    UART_Send_Missage(Usart1_buf);
+        getHeartbeat(Usart1_buf);
+        getNumber();
+    }
+    if ((NULL != p || NULL != s) && ((s - p) > 50 && (s - p) < 70)) {//?? connect ok
+        memset((char *) &key_key_buf, 0, sizeof(key_key_buf));
+        p = p + 20;
+        time_key = 0;
+        key_update = 1;
+        for (i = 0; i < 35; i++) {
+            if ((key_num[i] - 1) < 25) {
+                key_key_buf[key_num[i] - 1] = p[i];
+            } else {
+
+                //key_key_buf[key_num[i]-1]=p[i];
+                switch (35 - (key_num[i])) {
+                    case 0:
+                        time_key += (p[i] - 0x30);
+                        break;
+                    case 1:
+                        time_key += ((p[i] - 0x30) * 10);
+                        break;
+                    case 2:
+                        time_key += ((p[i] - 0x30) * 100);
+                        break;
+                    case 3:
+                        time_key += ((p[i] - 0x30) * 1000);
+                        break;
+                    case 4:
+                        time_key += ((p[i] - 0x30) * 10000);
+                        break;
+                    case 5:
+                        time_key += ((p[i] - 0x30) * 100000);
+                        break;
+                    case 6:
+                        time_key += ((p[i] - 0x30) * 1000000);
+                        break;
+                    case 7:
+                        time_key += ((p[i] - 0x30) * 10000000);
+                        break;
+                    case 8:
+                        time_key += ((p[i] - 0x30) * 100000000);
+                        break;
+                    case 9:
+                        time_key += ((p[i] - 0x30) * 1000000000);
+                        break;
+                    default:
+                        break;
+
+                }
+            }
+
+        }
+        time_key_add = 0;
+
+        key_update = 0;
+        //memcpy(key_key,p+22,35);
+        //UART_Send_Missage((u8 * )key_key_buf);
+        //UART_Send_Missage("   \n");
+        //memset((char *)&key_key,0,sizeof(key_key));
+        //sprintf( key_key,    "   String:    %lld\n", time_key );
+        //UART_Send_Missage((u8 * )key_key);
+        //UART_Send_Missage("   \n");
+        send_error_num = 0;
+        /***************************************/
+    }
+}
+
+
+void sendMessage(int sta) {
+    memset((char *) &str_buf, 0, sizeof(str_buf));
+    sprintf(str_buf, "{\"D\":\"%s\",\"U\":\"%s\",\"T\":\"%d\",\"S\":\"%s\"}", MachineID_Default, phone, sta, myTime);
+    UART_Send_Missage(str_buf);
+}
+
+//检测二维码部分
+char check_scan(void) {
+    u8 i = 0;
+    p = strstr(Usart2_buf, "M\":\"");
+    s = strstr(Usart2_buf, "U\":\"");
+    d = strstr(Usart2_buf, "\",\"1\":\"");
+    
+    n = strstr(Usart2_buf, "F\":\"");
+    f = strstr(Usart2_buf, "\"}");
+    if (NULL != p && NULL != s && NULL != d) {
+      //启动蜂鸣器
+                                DOOR_PWR(1);
+                                DelayN10ms(60);
+                                DOOR_PWR(0);
+        /* 解密扫码部分*/
+        getCode(Usart2_buf,0);
+        int isOpen = 0;
+        int allLoad = (strlen(Usart2_buf) - 38) / 17;//用户密钥个数
+        char arr3[10];
+        //????????????
+        for (int i = 0; i < 10; i++) {
+            *(arr3 + i) = *(userKey + i);
+        }
+        char arr4[10];
+        //??
+        for (int i = 0; i < 10; i++) {
+            arr4[i] = arr3[jieMi10[i] - 1];
+        }
+        //???????????
+        for (int i = 0; i < NR(arr4); i++) {
+            userNewKey[i] = arr4[i];
+        }
+        char a[7];
+        char b[7];
+        strncpy(a, userNewKey, 6); //?????????
+        strncpy(b, nowKey, 6); //?????????
+        for (int i = 0; i < allLoad; i++) {
+            if ((strcmp(a, b) == 0))//????????
+            {
+                isOpen = 1;
+                break;
+            }
+        }
+
+        //    printf("?????%ld,%ld,%ld\n",strlen(myTime),strlen(myKey),strlen(nowKey));
+
+        if (net_stu == 1)//???????
+        {
+            if ((strcmp(myKey, userKey) == 0))//密钥是否相同
+            {
+                if (atoi(myTime) + (int) (hardwareTime / 100) + 300 < atoi(userTime) ||
+                    atoi(myTime) + (hardwareTime / 100) - 300 > atoi(userTime))//????????
+                {
+                    sendMessage(0);
+                    return 0;
+                } else {
+                    sendMessage(1);
+                    return 1;
+                }
+            } else {
+                sendMessage(0);
+                return 0;
+            }
+        } else {
+            if (isOpen == 1)//密钥是否相同
+            {
+                if (atoi(myTime) + 300 < atoi(userTime))//??????5????
+                {
+                    hardwareTime = 0;
+                    sendMessage(1);
+                    return 1;
+                } else {
+                    sendMessage(0);
+                    return 0;
+                }
+            } else {
+                sendMessage(0);
+                return 0;
+            }
+        }
+        //
+        //
+        //    /*???????????*/
+        //    if(strlen(myTime)==10&&strlen(myKey)==10&&strlen(nowKey)==10)
+        //    {
+        //      int isOpen = 0;
+        //      int allLoad = (strlen(Usart2_buf)-38)/17;//??????????
+        ////      printf("????:%d\n????:%s\n",myTime,userTime);
+        //      check_ser();
+        //      if(atoi(myTime)+(int)(hardwareTime/100)+300<atoi(userTime)||atoi(myTime)+(hardwareTime/100)-300>atoi(userTime))//????????
+        //      {
+        //        memset((char *)&str_buf,0,sizeof(str_buf));
+        //        sprintf(str_buf,"{\"D\":\"%s\",\"U\":\"%s\",\"T\":\"0\",\"S\":\"%s\"}", MachineID_Default, phone, myTime);
+        //        UART_Send_Missage(str_buf);
+        ////        printf("?????%s\n",str_buf);
+        ////        printf("????1\n");
+        //        return 0;
+        //      }else{
+        //        for(int i=0;i<allLoad;i++)
+        //        {
+        //          strncpy(userKey, Usart2_buf+29+5+i*17, 10);
+        ////          printf("???????:%s\n???????:%s\n",userKey,myKey);
+        //          if(net_stu==1)
+        //          {
+        //            if((strcmp(userKey, myKey) == 0))//????????
+        //            {
+        //              isOpen = 1;
+        //              break;
+        //            }
+        //          }else{
+        //            char arr3[10];
+        //            //????????????
+        //            for(int i=0; i<10; i++)
+        //            {
+        //              *(arr3 + i) = *(userKey + i);
+        //            }
+        //            char arr4[10];
+        //            //??
+        //            for(int i=0; i<10; i++)
+        //            {
+        //              arr4[i] = arr3[jieMi10[i]-1];
+        //            }
+        //
+        //            //???????????
+        //            for(int i = 0 ; i < NR(arr4) ; i++)
+        //            {
+        //              userNewKey[i] = arr4[i] ;
+        //            }
+        //            char a[7];
+        //            char b[7];
+        //            strncpy(a, userNewKey, 6); //?????
+        //            strncpy(b, nowKey, 6); //?????
+        //            if((strcmp(a, b) == 0))//????????
+        //            {
+        //              isOpen = 1;
+        //              break;
+        //            }
+        //          }
+        //        }
+        //
+        //        if(1==isOpen)
+        //        {
+        //          memset((char *)&str_buf,0,sizeof(str_buf));
+        //          sprintf(str_buf,"{\"D\":\"%s\",\"U\":\"%s\",\"T\":\"1\",\"S\":\"%s\"}", MachineID_Default, phone, myTime);
+        //          UART_Send_Missage(str_buf);
+        ////          printf("?????%s\n",str_buf);
+        ////          printf("????\n");
+        //        //  USART1_Send("AT+QTTS=2,\"?????????\"\r\n");
+        //          return 1;
+        //        }else{
+        //          memset((char *)&str_buf,0,sizeof(str_buf));
+        //          sprintf(str_buf,"{\"D\":\"%s\",\"U\":\"%s\",\"T\":\"0\",\"S\":\"%s\"}", MachineID_Default, phone, myTime);
+        //          UART_Send_Missage(str_buf);
+        ////          printf("?????%s\n",str_buf);
+        ////          printf("????2\n");
+        //          return 0;
+        //        }
+        //      }
+        //    }else{
+        ////      printf("????3\n");
+        //      return 0;
+        //    }
+    }else if(NULL != f && NULL != n){//判断是否为管理员二维码
+      //启动蜂鸣器
+                                DOOR_PWR(1);
+                                DelayN10ms(60);
+                                DOOR_PWR(0);
+      strncpy(admin_machineId, Usart2_buf + 34, 18);
+     // printf("管理员机器码:%d\n",admin_machineId);
+     // printf("硬件的机器码:%d\n",MachineID_Default);
+      if(strcmp(MachineID_Default,admin_machineId)==0)//判断机器码是否相同
+      {
+        /* 解密扫码部分*/
+        getCode(Usart2_buf,1);
+        char ww[11];
+        strncpy(myKey, Usart2_buf + 34+18+7,10);
+       // printf("未解密密钥:%s\n",myKey);
+        char hh[4];
+        strncpy(hh, Usart2_buf + 34+18+7+10+7,3);
+        swipe = atoi(hh);
+        getNumber();
+        //printf("刷卡密码:%d\n",swipe);
+        return 1;
+      }else{
+        return 3;
+      }
+    }
+    return 0;
+}
+
+char gprs_check(void *jj, int time) {
+    char *p;
+    char re_stu = 0;
+    DelayNum10ms = time;
+    while (1) {
+
+        if (no_net_display < 200) {
+            re_stu = find_action();
+            if (re_stu != 0) {
+                no_net_display = 300;
+
+                DOOR_PWR(1);
+                DelayN10ms(60);
+                DOOR_PWR(0);
+                if (re_stu == 1) { //开门
+                    OPEN_SW(1);
+                    DelayN10ms(100);
+                    OPEN_SW(0);
+                    OLED_DrawBMP(0, 0, 128, 8, door_ok);
+                }else if(re_stu == 2){
+                  OLED_DrawBMP(0, 0, 128, 8, error_door);
+                }else {
+                    if (check_scan() == 1) {//开门(这是扫码开门？)
+                        OPEN_SW(1);
+                        DelayN10ms(100);
+                        OPEN_SW(0);
+                        OLED_DrawBMP(0, 0, 128, 8, door_ok);
+                    } else
+                        OLED_DrawBMP(0, 0, 128, 8, error_door);
+                }
+                re_stu = 0;
+                memset((char *) &Usart2_buf_old, 0, sizeof(Usart2_buf_old));
+                memset((char *) &Usart2_buf, 0, sizeof(Usart2_buf));
+                usart2_lent_old = usart2_lent = usart2_read_en = 0;
+            }
+        }
+        if (no_net_display == 0) {
+            OLED_DrawBMP(0, 0, 128, 8, best_use);
+            no_net_display = -1;
+        }
+
+        if (DelayNum10ms <= 0) {
+            no_net_display_stop();
+            return 0;
+        }
+        if (usart1_read_en == 1) {
+            p = strstr(Usart1_buf, jj);
+            if (NULL != p) {//查询 connect ok
+                no_net_display_stop();
+                return 1;
+            }
+            memset((char *) &Usart1_buf, 0, sizeof(Usart1_buf));
+            usart1_lent_old = usart1_lent = usart1_read_en = 0;
+        }
+    }
+}
+
+int main(void) {
+    u8 i;
+#ifdef DEBUG
+    debug();
+#endif
+    ACCLOG("start...\n");
+    //isDebug = 1;
+    /* Init_Value --------------------------------------------------------------*/
+    Init_Value();
+    /* System clocks configuration ---------------------------------------------*/
+    RCC_Configuration();
+    /* NVIC configuration ------------------------------------------------------*/
+    NVIC_Configuration();
+    /* GPIO configuration ------------------------------------------------------*/
+    GPIO_Configuration();
+
+    USART_Configuration();
+    //SysTick_Config(SYSTIME);
+    TIM2_Init();
+    IWDG_Configuration();//?????
+    delay_init(48);
+
+    MFRC522_init();
+
+    DOOR_PWR(1);
+    DelayN10ms(20);
+    DOOR_PWR(0);
+    int find_myCar(int sanqu, int qukuai);
+    OLED_Init();            //初始化OLED
+    OLED_Clear();
+    MP3_ON_OFF(1);
+
+    //memset((char *)&key_key_buf,0,sizeof(key_key_buf));
+    //sprintf(key_key_buf,"%s00%12345",MachineID_Default);
+    //strcpy(key_key_buf,"111111111111111100%12345");
+    while (0) {
+        DOOR_PWR(1);
+        DelayN10ms(60);
+        DOOR_PWR(0);
+        DelayN10ms(60);
+    }
+
+    while (gprs_select_en) {
+        OLED_DrawBMP(0, 0, 128, 8, best_use);
+        LED(0);
+        DelayN10ms(50);
+        LED(1);
+        reset_gprs();
+        /***/
+        for (i = 0; i < 10; i++) {
+            memset((char *) &Usart1_buf, 0, sizeof(Usart1_buf));
+            usart1_lent_old = usart1_lent = usart1_read_en = 0;
+            UART_Send_Missage("AT\r\n");
+            if (gprs_check("OK", 300) == 1)break;
+        }
+        if (i >= 10)continue;
+        /***/
+        //DelayN10ms(200);
+        DelayN10ms(20);
+        for (i = 0; i < 10; i++) {
+            memset((char *) &Usart1_buf, 0, sizeof(Usart1_buf));
+            usart1_lent_old = usart1_lent = usart1_read_en = 0;
+            UART_Send_Missage("AT+GSN\r\n");
+            if (gprs_check("OK", 200) == 1)break;
+        }
+        if (i >= 10)continue;
+        /***/DelayN10ms(20);
+
+        for (i = 0; i < 10; i++) {
+            memset((char *) &Usart1_buf, 0, sizeof(Usart1_buf));
+            usart1_lent_old = usart1_lent = usart1_read_en = 0;
+            UART_Send_Missage("AT+CPIN?\r\n");
+            if (gprs_check("+CPIN: READY", 200) == 1)break;
+        }
+        if (i >= 10)continue;
+        /***/
+        DelayN10ms(20);
+        
+ reconect: 
+        for (i = 0; i < 10; i++) {
+            memset((char *) &Usart1_buf, 0, sizeof(Usart1_buf));
+            usart1_lent_old = usart1_lent = usart1_read_en = 0;
+            UART_Send_Missage("AT+QIFGCNT=0\r\n");
+            if (gprs_check("OK", 500) == 1)break;
+        }
+        if (i >= 10)continue;
+        /***/
+        DelayN10ms(20);
+        for (i = 0; i < 10; i++) {
+            memset((char *) &Usart1_buf, 0, sizeof(Usart1_buf));
+            usart1_lent_old = usart1_lent = usart1_read_en = 0;
+            UART_Send_Missage("AT+QIMODE=1\r\n");
+            if (gprs_check("OK", 200) == 1)break;
+        }
+        if (i >= 10)continue;
+        /***/DelayN10ms(20);
+        for (i = 0; i < 10; i++) {
+            memset((char *) &Usart1_buf, 0, sizeof(Usart1_buf));
+            usart1_lent_old = usart1_lent = usart1_read_en = 0;
+            UART_Send_Missage("AT+QIDEACT\r\n");
+            if (gprs_check("OK", 200) == 1)break;
+        }
+        if (i >= 10)continue;
+        /***/DelayN10ms(20);
+        for (i = 0; i < 10; i++) {
+            memset((char *) &Usart1_buf, 0, sizeof(Usart1_buf));
+            usart1_lent_old = usart1_lent = usart1_read_en = 0;
+            UART_Send_Missage("AT+QIMUX=0\r\n");
+            if (gprs_check("OK", 200) == 1)break;
+        }
+        if (i >= 10)continue;
+        /***/DelayN10ms(10);
+        for (i = 0; i < 10; i++) {
+            memset((char *) &Usart1_buf, 0, sizeof(Usart1_buf));
+            usart1_lent_old = usart1_lent = usart1_read_en = 0;
+            UART_Send_Missage("AT+QIDNSIP=1\r\n");
+            if (gprs_check("OK", 200) == 1)break;
+        }
+        if (i >= 10)continue;
+        /***/DelayN10ms(20);
+        memset((char *) &Usart1_buf, 0, sizeof(Usart1_buf));
+        usart1_lent_old = usart1_lent = usart1_read_en = 0;
+        DelayN10ms(200);
+        LED(0);
+        DelayN10ms(200);
+        LED(1);
+        UART_Send_Missage("AT+QIOPEN=\"TCP\",\"api.sunsyi.com\",5555\r\n");
+        //UART_Send_Missage("AT+QIOPEN=\"TCP\",\"bgyfhh02.chinacloudapp.cn\",5555\r\n");
+        i = 0;
+        DelayNum10ms = 2000;
+        while (1) {
+            if (no_net_display < 200) {
+                re_stu = find_action();
+                if (re_stu != 0) {
+                    //if(isDebug) {
+                    ACCLOG("find action now...");
+                    //}
+                    no_net_display = 300;
+                    memset((char *) &Usart2_buf_old, 0, sizeof(Usart2_buf_old));
+                    memset((char *) &Usart2_buf, 0, sizeof(Usart2_buf));
+                    usart2_lent_old = usart2_lent = usart2_read_en = 0;
+                    DOOR_PWR(1);
+                    DelayN10ms(60);
+                    DOOR_PWR(0);
+                    if (re_stu == 1) { //开门
+                        //if(isDebug) {
+                        ACCLOG("open door now...\n");
+                        //}
+                        OPEN_SW(1);
+                        DelayN10ms(100);
+                        OPEN_SW(0);
+                        OLED_DrawBMP(0, 0, 128, 8, door_ok);
+                    } else {
+                        //if(isDebug) {
+                        //    printf("open door not 1...\n");
+                        //}
+                        if (check_scan() == 1) {//开门
+                            ACCLOG("open door now from check scan...\n");
+                            OPEN_SW(1);
+                            DelayN10ms(100);
+                            OPEN_SW(0);
+                            OLED_DrawBMP(0, 0, 128, 8, door_ok);
+                        } else {
+                            ACCLOG("open door fail...\n");
+                            OLED_DrawBMP(0, 0, 128, 8, error_door);
+                        }
+                    }
+                    re_stu = 0;
+                    memset((char *) &Usart2_buf_old, 0, sizeof(Usart2_buf_old));
+                    memset((char *) &Usart2_buf, 0, sizeof(Usart2_buf));
+                    usart2_lent_old = usart2_lent = usart2_read_en = 0;
+
+                    re_stu = 0;
+                } else {
+                    //if(isDebug) {
+                    //ACCLOG("open door not 1...");
+                    //}
+                }
+            }
+
+
+            if (no_net_display == 0) {
+                OLED_DrawBMP(0, 0, 128, 8, best_use);
+                no_net_display = -1;
+            }
+
+            if (DelayNum10ms <= 0) {
+                i = 10;
+                break;
+            }
+
+            if (usart1_read_en == 1) {
+                p = strstr(Usart1_buf, "CONNECT");
+                s = strstr(Usart1_buf, "FAIL");
+                d = strstr(Usart1_buf, "DOWN");
+                if (NULL != p && NULL == s) {//查询 connect ok
+                    Reconnectcount=0;
+                    i = 9;
+                    break;
+                }
+                if (NULL != s) {//如果连接失败就重复3次跳出重启
+                    if (i == 3) {
+                        i = 10;
+                        break;
+                    }
+                    memset((char *) &Usart1_buf, 0, sizeof(Usart1_buf));
+                    usart1_lent_old = usart1_lent = usart1_read_en = 0;
+                    UART_Send_Missage("AT+QIOPEN=\"TCP\",\"api.sunsyi.com\",5555\r\n");
+                    //UART_Send_Missage("AT+QIOPEN=\"TCP\",\"bgyfhh02.chinacloudapp.cn\",5555\r\n");
+                    DelayNum10ms = 2000;
+                    i++;
+                }
+                if (NULL != d) {
+                    i = 11;
+                    break;
+                }
+                memset((char *) &Usart1_buf, 0, sizeof(Usart1_buf));
+                usart1_lent_old = usart1_lent = usart1_read_en = 0;
+            }
+        }
+        no_net_display_stop();
+        memset((char *) &Usart1_buf, 0, sizeof(Usart1_buf));
+        usart1_lent_old = usart1_lent = usart1_read_en = 0;
+        if (i == 10) {
+            for (j = 0; j < 100; j++)
+                delay10_in_nonet();
+            for (j = 0; j < 100; j++)
+                delay10_in_nonet();
+            for (j = 0; j < 100; j++)
+                delay10_in_nonet();
+            for (j = 0; j < 100; j++)
+                delay10_in_nonet();
+            no_net_display_stop();
+            reset_gprs();
+            continue;
+        }
+        if (i == 11) {
+            for (j = 0; j < 100; j++)
+                delay10_in_nonet();
+            for (j = 0; j < 100; j++)
+                delay10_in_nonet();
+            for (j = 0; j < 100; j++)
+                delay10_in_nonet();
+            for (j = 0; j < 100; j++)
+                delay10_in_nonet();
+            no_net_display_stop();
+            continue;
+        }
+
+        for (j = 0; j < 100; j++)
+            delay10_in_nonet();
+        for (j = 0; j < 100; j++)
+            delay10_in_nonet();
+        for (j = 0; j < 100; j++)
+            delay10_in_nonet();
+        no_net_display_stop();
+        net_display(0, 0, 1);
+
+        while (1) {
+            net_stu = 1;
+            if (re_stu != 0) {
+                re_stu = 0;
+                if (re_stu == 1) {
+                    s = strstr(buf, "5555555555555555");
+                    DOOR_PWR(1);
+                    DelayN10ms(60);
+                    DOOR_PWR(0);
+
+                    OPEN_SW(1);
+                    DelayN10ms(100);
+                    OPEN_SW(0);
+                    //          if(NULL ==s&&0){
+                    //            OLED_DrawBMP(0,0,128,8,error_door);
+                    //            for(i=0;i<10;i++){
+                    //              re_stu=find_action();
+                    //              if(re_stu!=0){
+                    //                break;
+                    //              }
+                    //              DelayN10ms(10);
+                    //            }
+                    //            OLED_DrawBMP(0,0,128,8,best_use); net_display(0,0,1);
+                    //            continue;
+                    //          }
+
+                    memset((char *) &str_buf, 0, sizeof(str_buf));
+                    sprintf(str_buf, "{\"D\":\"%s\",\"U\":\"%s\",\"T\":\"2\",\"S\":\"%lld\"}", MachineID_Default, buf,
+                            time_key);
+                    UART_Send_Missage(str_buf);
+                    MP3_ON_OFF(0);
+                    OLED_DrawBMP(0, 0, 128, 8, door_ok);
+
+                    for (i = 0; i < 100; i++) {
+                        re_stu = find_action();
+                        if (re_stu != 0) {
+                            break;
+                        }
+                        DelayN10ms(10);
+                    }
+                    MP3_ON_OFF(1);
+
+
+                    if (re_stu != 0)continue;
+
+
+                    OLED_DrawBMP(0, 0, 128, 8, best_use);
+                    net_display(0, 0, 1);
+                }
+
+
+                if (re_stu == 2) {
+                    DOOR_PWR(1);
+                    DelayN10ms(60);
+                    DOOR_PWR(0);
+                    memcpy((char *) &Usart2_buf_old, (char *) &Usart2_buf, sizeof(Usart2_buf));
+
+                    if (check_scan() == 0) {
+                        OLED_DrawBMP(0, 0, 128, 8, error_door);
+                        memset((char *) &Usart2_buf, 0, sizeof(Usart2_buf));
+                        usart2_lent_old = usart2_lent = usart2_read_en = 0;
+                        for (i = 0; i < 10; i++) {
+                            re_stu = find_action();
+                            if (re_stu != 0) {
+                                break;
+                            }
+                            DelayN10ms(10);
+                        }
+                        OLED_DrawBMP(0, 0, 128, 8, best_use);
+                        net_display(0, 0, 1);
+                        continue;
+                    }
+                    OPEN_SW(1);
+                    DelayN10ms(100);
+                    OPEN_SW(0);
+
+
+                    MP3_ON_OFF(0);
+                    OLED_DrawBMP(0, 0, 128, 8, door_ok);
+                    memset((char *) &Usart2_buf, 0, sizeof(Usart2_buf));
+                    usart2_lent_old = usart2_lent = usart2_read_en = 0;
+                    for (i = 0; i < 100; i++) {
+                        if (i == 10)memset((char *) &Usart2_buf_old, 0, sizeof(Usart2_buf_old));
+                        re_stu = find_action();
+                        if (re_stu != 0) {
+                            //UART_Send_Missage((u8 * )Usart2_buf);
+                            break;
+                        }
+                        DelayN10ms(10);
+                    }
+                    OLED_DrawBMP(0, 0, 128, 8, best_use);
+                    net_display(0, 0, 1);
+                    MP3_ON_OFF(1);
+
+
+                    if (re_stu != 0)continue;
+                    //UART_Send_Missage((u8 * )Usart2_buf);
+                    memset((char *) &Usart2_buf_old, 0, sizeof(Usart2_buf_old));
+                    memset((char *) &Usart2_buf, 0, sizeof(Usart2_buf));
+                    usart2_lent_old = usart2_lent = usart2_read_en = 0;
+
+                }
+            }
+
+            if (find_car() == 1) {
+                if (NULL == s && 0) {
+                    OLED_DrawBMP(0, 0, 128, 8, error_door);
+                    for (i = 0; i < 10; i++) {
+                        re_stu = find_action();
+                        if (re_stu != 0) {
+                            break;
+                        }
+                        DelayN10ms(10);
+                    }
+                    OLED_DrawBMP(0, 0, 128, 8, best_use);
+                    net_display(0, 0, 1);
+                    continue;
+                }
+                //if (isDebug) {
+                ACCLOG("find card now...");
+                //}
+                memset((char *) &str_buf, 0, sizeof(str_buf));
+                sprintf(str_buf, "{\"D\":\"%s\",\"U\":\"%s\",\"T\":\"2\",\"S\":\"%s\"}", MachineID_Default, carNumber,
+                        myTime);
+                UART_Send_Missage(str_buf);//和刷卡有关？
+
+                OPEN_SW(1);
+                DelayN10ms(100);
+                OPEN_SW(0);
+                MP3_ON_OFF(0);
+                OLED_DrawBMP(0, 0, 128, 8, door_ok);
+
+                for (i = 0; i < 100; i++) {
+                    re_stu = find_action();
+                    if (re_stu != 0) {
+                        break;
+                    }
+                    DelayN10ms(10);
+                }
+                MP3_ON_OFF(1);
+                if (re_stu != 0)continue;
+
+                OLED_DrawBMP(0, 0, 128, 8, best_use);
+                net_display(0, 0, 1);
+            } else if (find_car() == 2) {
+                
+                //开门失败做处理
+                memset((char *) &str_buf, 0, sizeof(str_buf));
+                sprintf(str_buf, "{\"D\":\"%s\",\"U\":\"%s\",\"T\":\"0\",\"S\":\"%s\"}", MachineID_Default, carNumber,
+                        myTime);
+                UART_Send_Missage(str_buf);
+                
+                //if (isDebug) {
+                ACCLOG("did not find card...\n");
+                //}
+                OLED_DrawBMP(0, 0, 128, 8, error_door);
+                DelayN10ms(200);
+                OLED_DrawBMP(0, 0, 128, 8, best_use);
+                net_display(0, 0, 1);
+            }
+            if (usart2_read_en == 1) {//蓝牙数据
+                DOOR_PWR(1);
+                DelayN10ms(60);
+                DOOR_PWR(0);
+                memcpy((char *) &Usart2_buf_old, (char *) &Usart2_buf, sizeof(Usart2_buf));
+
+                if (check_scan() == 0) {
+                    OLED_DrawBMP(0, 0, 128, 8, error_door);
+                    memset((char *) &Usart2_buf, 0, sizeof(Usart2_buf));
+                    usart2_lent_old = usart2_lent = usart2_read_en = 0;
+                    for (i = 0; i < 10; i++) {
+                        re_stu = find_action();
+                        if (re_stu != 0) {
+                            break;
+                        }
+                        DelayN10ms(10);
+                    }
+                    OLED_DrawBMP(0, 0, 128, 8, best_use);
+                    net_display(0, 0, 1);
+                    continue;
+                }
+
+
+                OPEN_SW(1);
+                DelayN10ms(100);
+                OPEN_SW(0);
+                MP3_ON_OFF(0);
+                OLED_DrawBMP(0, 0, 128, 8, door_ok);
+                memset((char *) &Usart2_buf, 0, sizeof(Usart2_buf));
+                usart2_lent_old = usart2_lent = usart2_read_en = 0;
+                for (i = 0; i < 100; i++) {
+                    if (i == 10)memset((char *) &Usart2_buf_old, 0, sizeof(Usart2_buf_old));
+                    re_stu = find_action();
+                    if (re_stu != 0) {
+                        //UART_Send_Missage((u8 * )Usart2_buf);
+                        break;
+                    }
+                    DelayN10ms(10);
+                }
+
+
+                OLED_DrawBMP(0, 0, 128, 8, best_use);
+                net_display(0, 0, 1);
+                MP3_ON_OFF(1);
+                if (re_stu != 0)continue;
+                //UART_Send_Missage((u8 * )Usart2_buf);
+                memset((char *) &Usart2_buf_old, 0, sizeof(Usart2_buf_old));
+                memset((char *) &Usart2_buf, 0, sizeof(Usart2_buf));
+                usart2_lent_old = usart2_lent = usart2_read_en = 0;
+
+            }
+
+            if (heart_num == 0) {//心跳
+                memset((char *) &str_buf, 0, sizeof(str_buf));
+                sprintf(str_buf, "{\"D\":\"%s\",\"U\":\"0\",\"T\":\"\",\"S\":\"\"}\r\n", MachineID_Default);
+                UART_Send_Missage(str_buf);  //发送心跳
+                //UART_Send_Missage("{\"D\":\"111111111111111100\",\"U\":\"0\",\"T\":\"\",\"S\":\"\"}\r\n");
+                send_error_num++;
+                if (send_error_num > 2) { send_error_num = 0; }
+                heart_num = 3000;
+            }
+            //超时立即重启gprs
+            if (count >= 10000) // 2017-11-11
+            {
+                count=0;
+                UART_Send_Missage("+++");
+                delay(2000);
+                UART_Send_Missage("AT+QICLOSE\r\n");
+                delay(1000); 
+                Reconnectcount++;
+                goto reconect;
+            } 
+            /*else if (count >= 20000) {
+                reset_gprs;
+            } else if (count >= 30000) {
+                NVIC_SystemReset(); 
+            }*/     // 2017-11-11
+
+            if (usart1_read_en == 1) {//WIFI数据
+                /************************************心跳***/
+                check_ser();
+                memset((char *) &Usart1_buf, 0, sizeof(Usart1_buf));
+                usart1_lent_old = usart1_lent = usart1_read_en = 0;
+            }
+        }
+        net_stu = 0;
+        LED(0);
+        reset_gprs();
+    }
+}
+
+void TIM6_Int_Init(u16 arr, u16 psc) {
+    TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+    NVIC_InitTypeDef NVIC_InitStructure;
+
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, ENABLE); //???1??
+
+    //?????IM43?????
+    TIM_TimeBaseStructure.TIM_Period = arr; //?????????????????t????????????????????????????????
+    TIM_TimeBaseStructure.TIM_Prescaler = psc; //?????????aTIMx???????3y??????????
+    TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1; //?????????:TDTS = Tck_tim
+    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;  //TIM??????????
+    TIM_TimeBaseInit(TIM6, &TIM_TimeBaseStructure); //???Y??????2??3?????TIMx???????y????
+    TIM_ClearITPendingBit(TIM6, TIM_FLAG_Update);
+    TIM_ITConfig(TIM6, TIM_IT_Update, ENABLE); //?1????????TIM3?D??,???????D??
+
+    //?D????????NVIC???
+    NVIC_InitStructure.NVIC_IRQChannel = TIM6_DAC_IRQn;  //TIM4?D??
+    NVIC_InitStructure.NVIC_IRQChannelPriority = 1;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE; //IRQ?????1??
+    NVIC_Init(&NVIC_InitStructure);  //3?????NVIC??????
+}
+
+/*******************************************************************************
+* Function Name  : RCC_Configuration
+* Description    : Configures the different system clocks.
+* Input          : None
+* Output         : None
+* Return         : None
+*******************************************************************************/
+void RCC_Configuration(void) {
+
+    RCC_AHBPeriphClockCmd(
+            RCC_AHBPeriph_DMA1 | RCC_AHBPeriph_GPIOA | RCC_AHBPeriph_GPIOB | RCC_AHBPeriph_GPIOF | RCC_AHBPeriph_FLITF |
+            RCC_AHBPeriph_SRAM, ENABLE);
+
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG | RCC_APB2Periph_ADC1 | RCC_APB2Periph_USART1 | RCC_APB2Periph_DBGMCU,
+                           ENABLE);
+
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2 | RCC_APB1Periph_TIM3 | RCC_APB1Periph_WWDG, ENABLE);
+
+}
+
+
+/*******************************************************************************
+* Function Name  : GPIO_Configuration
+* Description    : Configures the different GPIO ports.
+* Input          : None
+* Output         : None
+* Return         : None
+*******************************************************************************/
+
+void GPIO_Configuration(void) {
+    GPIO_InitTypeDef GPIO_InitStructure;
+
+
+    /*USART1*/
+
+    GPIO_PinAFConfig(GPIOA, GPIO_PinSource9, GPIO_AF_1);
+    GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_1);
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9 | GPIO_Pin_10;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+    /*USART2*/
+    GPIO_PinAFConfig(GPIOA, GPIO_PinSource2, GPIO_AF_1);
+    GPIO_PinAFConfig(GPIOA, GPIO_PinSource3, GPIO_AF_1);
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2 | GPIO_Pin_3;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+
+
+
+    // 蜂鸣器  2017-11-11
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    GPIO_ResetBits(GPIOA, GPIO_Pin_4);
+
+    /* SMARTCONFIG WifiLedCtl*/
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3 | GPIO_Pin_4;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    GPIOB->BRR = GPIO_Pin_4;
+    GPIOB->BSRR = GPIO_Pin_3;
+
+
+
+    // GPRS_EN
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    GPIO_ResetBits(GPIOA, GPIO_Pin_8);
+
+
+    /*****************语音控制******************************/
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_15;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    GPIOA->BRR = GPIO_Pin_15;
+
+    GPIO_ResetBits(GPIOB, GPIO_Pin_5);
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    /*****************************************/
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    GPIO_ResetBits(GPIOB, GPIO_Pin_12);
+
+}
+
+/**
+* @brief  Configures the USART1 controller.
+* @param  None
+* @retval None
+*/
+
+void USART_Configuration(void) {
+    USART_InitTypeDef USART_InitStructure;
+    USART_ClockInitTypeDef USART_ClockInitStructure;
+
+    USART_InitStructure.USART_BaudRate = BAUD1;
+    USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+    USART_InitStructure.USART_StopBits = USART_StopBits_1;
+    USART_InitStructure.USART_Parity = USART_Parity_No;
+    USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+    USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+    USART_Init(USART1, &USART_InitStructure);
+
+    USART_ClockInitStructure.USART_Clock = USART_Clock_Disable;
+    USART_ClockInitStructure.USART_CPOL = USART_CPOL_Low;
+    USART_ClockInitStructure.USART_CPHA = USART_CPHA_2Edge;
+    USART_ClockInitStructure.USART_LastBit = USART_LastBit_Disable;
+    USART_ClockInit(USART1, &USART_ClockInitStructure);
+
+    USART_Cmd(USART1, ENABLE);
+    USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
+
+    USART_InitStructure.USART_BaudRate = BAUD2;
+    USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+    USART_InitStructure.USART_StopBits = USART_StopBits_1;
+    USART_InitStructure.USART_Parity = USART_Parity_No;
+    USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+    USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+    USART_Init(USART2, &USART_InitStructure);
+
+    USART_ClockInitStructure.USART_Clock = USART_Clock_Disable;
+    USART_ClockInitStructure.USART_CPOL = USART_CPOL_Low;
+    USART_ClockInitStructure.USART_CPHA = USART_CPHA_2Edge;
+    USART_ClockInitStructure.USART_LastBit = USART_LastBit_Disable;
+    USART_ClockInit(USART2, &USART_ClockInitStructure);
+
+    USART_Cmd(USART2, ENABLE);
+    USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
+}
+
+void Init_ADC(void) {
+    ADC_InitTypeDef ADC_InitStructure;
+    DMA_InitTypeDef DMA_InitStructure;
+    DMA_DeInit(DMA1_Channel1);
+    DMA_InitStructure.DMA_PeripheralBaseAddr = ADC1_DR_Address;
+    DMA_InitStructure.DMA_MemoryBaseAddr = (u32) & ADC_ConvertedValue;
+    DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
+    DMA_InitStructure.DMA_BufferSize = 64;
+    DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+    DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+    DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
+    DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
+    DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+    DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+    DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
+    DMA_Init(DMA1_Channel1, &DMA_InitStructure);
+
+
+    /* ADCs DeInit */
+    ADC_DeInit(ADC1);
+    /* Initialize ADC structure */
+    ADC_StructInit(&ADC_InitStructure);
+    /* Configure the ADC1 in continuous mode with a resolution equal to 12 bits  */
+    ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b;
+    ADC_InitStructure.ADC_ContinuousConvMode = DISABLE;
+    ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None;
+    ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
+    ADC_InitStructure.ADC_ScanDirection = ADC_ScanDirection_Upward;
+    ADC_Init(ADC1, &ADC_InitStructure);
+
+    ADC_OverrunModeCmd(ADC1, ENABLE);
+    ADC_ChannelConfig(ADC1, ADC_Channel_0 | ADC_Channel_1, ADC_SampleTime_239_5Cycles);//temp
+    // Enable ADC1 DMA
+    ADC_DMACmd(ADC1, ENABLE);
+
+    ADC_GetCalibrationFactor(ADC1);
+
+    /* Enable the ADC peripheral */
+    ADC_Cmd(ADC1, ENABLE);
+
+    /* Wait the ADRDY flag */
+    while (!ADC_GetFlagStatus(ADC1, ADC_FLAG_ADRDY));
+
+    ADC_DMARequestModeConfig(ADC1, ADC_DMAMode_Circular);
+
+    ADC_StartOfConversion(ADC1);
+
+    /* Enable DMA Channel1 complete transfer interrupt */
+    DMA_ITConfig(DMA1_Channel1, DMA_IT_TC, ENABLE);
+
+    DMA_ClearITPendingBit(DMA_IT_TC);
+    // Enable DMA channel1
+    DMA_Cmd(DMA1_Channel1, ENABLE);
+}
+
+
+void Delayms(u16 ms) {
+    u16 i, j;
+    u8 k;
+    for (i = 0; i < ms; i++)
+        for (j = 0; j < 0x0aaa; j++) k++;
+}
+
+
+/*******************************************************************************
+* Function Name  : NVIC_Configuration
+* Description    : Configures Vector Table base location.
+* Input          : None
+* Output         : None
+* Return         : None
+*******************************************************************************/
+void NVIC_Configuration(void) {
+    NVIC_InitTypeDef NVIC_InitStructure;
+
+
+    /* USART1的NVIC中断配置 */
+    NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPriority = 0x01;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
+
+    /* USART2的NVIC中断配置 */
+    NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPriority = 0x00;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
+
+    /*IRQ*/
+    NVIC_InitStructure.NVIC_IRQChannel = EXTI4_15_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPriority = 0x01;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
+
+    /* enabling interrupt */
+
+    NVIC_InitStructure.NVIC_IRQChannel = TIM3_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
+
+    NVIC_InitStructure.NVIC_IRQChannel = TIM2_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPriority = 1;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
+    /* enabling interrupt   */
+    NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel1_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPriority = 1;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
+
+    /* Configure the SysTick handler priority */
+    //  NVIC_SystemHandlerPriorityConfig(SystemHandler_SysTick, 2, 0);
+    /*NVIC_InitStructure.NVIC_IRQChannel=SysTick_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);*/
+}
+
+void IWDG_Configuration(void) {
+    /* IWDG counter clock: 40KHz(LSI) / 4 = 10 KHz */
+    IWDG_SetPrescaler(IWDG_Prescaler_4);
+
+    IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable);
+    /* Set counter reload value to 1000 */
+    //该参数允许取值范围为0 – 0x0FFF
+    IWDG_SetReload(4000);  //400ms
+    /* Reload IWDG counter */
+    IWDG_ReloadCounter();
+    /* Enable IWDG (the LSI oscillator will be enabled by hardware) */
+    IWDG_Enable();
+
+}
+
+void TIM3_Init() {
+    TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+
+    //TIM_DeInit(TIM3);
+    //TIM_InternalClockConfig(TIM3);
+    //TIM_TimeBaseStructure.TIM_Period=(TIM_CLK/2000)-1;
+    // TIM_TimeBaseStructure.TIM_Prescaler=1999;
+    //TIM_TimeBaseStructure.TIM_CounterMode=TIM_CounterMode_Up; //向上计数模式
+
+    TIM_TimeBaseStructure.TIM_Period = (TIM_CLK / 2000) - 1;
+    TIM_TimeBaseStructure.TIM_Prescaler = 1999;
+    TIM_TimeBaseStructure.TIM_ClockDivision = 0x0;
+    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+
+    TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
+    TIM_SetAutoreload(TIM3, ((TIM_CLK / 2000) - 1));
+
+    //TIM_OCInitTypeDef TIMOCInitStructure;
+    //TIMOCInitStructure.TIM_OCMode = TIM_OCMode_Timing; //PWM输出比较模式
+    //TIMOCInitStructure.TIM_Pulse =(u32)((TIM_CLK/(3000))-1);//占空比=(CCRx/ARR)*100%
+    //TIMOCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;//TIM输出比较极性高
+    //TIMOCInitStructure.TIM_OutputState = TIM_OutputState_Enable;//使能输出状态
+    // TIM_OC1Init(TIM3, &TIMOCInitStructure);//TIM3的CH1输出
+
+    TIM_ITConfig(TIM3, TIM_IT_Update, ENABLE); // 打开捕获比较中断 TIM_IT_Update
+
+    TIM_Cmd(TIM3, ENABLE); //开启时钟
+}
+
+void TIM2_Init() {
+    TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+
+
+    TIM_TimeBaseStructure.TIM_Period = (TIM_CLK / 200000) - 1;
+    TIM_TimeBaseStructure.TIM_Prescaler = 1999;
+    TIM_TimeBaseStructure.TIM_ClockDivision = 0x0;
+    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+
+    TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure);
+    TIM_SetAutoreload(TIM2, ((TIM_CLK / 200000) - 1));
+
+
+    TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE); // 打开捕获比较中断 TIM_IT_Update
+
+    TIM_Cmd(TIM2, ENABLE); //开启时钟
+}
+
+
+void Init_Exit(void) {
+    EXTI_InitTypeDef EXTI_InitStructure;    //外部中断线
+
+    /* Connect Button EXTI Line to Button GPIO Pin */
+    SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOF, EXTI_PinSource7);
+    EXTI_ClearITPendingBit(EXTI_Line7);
+    /* Configure Button EXTI line */
+    EXTI_InitStructure.EXTI_Line = EXTI_Line7;    //外部线路EXIT5
+    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;            //设外外部中断模式:EXTI线路为中断请求  EXTI_Mode_Event ;//设置 EXTI线路为事件请求
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;  //外部中断触发沿选择:设置输入线路下降沿为中断请求
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;        //使能外部中断新状态
+    EXTI_Init(&EXTI_InitStructure);        //根据EXTI_InitStruct中指定的参数初始化外设EXTI寄存器
+}
+
+
+void DelayN10ms(u16 time) {
+    DelayNum10ms = time;
+    while (DelayNum10ms != 0);
+}

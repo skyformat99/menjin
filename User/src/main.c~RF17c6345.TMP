@@ -1,0 +1,4301 @@
+/******************** (C) COPYRIGHT 2007 STMicroelectronics ********************
+* File Name          : main.c
+* Author             : MCD Application Team
+* Version            : V1.0
+* Date               : 10/08/2007
+* Description        : Main program body
+********************************************************************************
+* THE PRESENT SOFTWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS
+* WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE TIME.
+* AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY DIRECT,
+* INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING FROM THE
+* CONTENT OF SUCH SOFTWARE AND/OR THE USE MADE BY CUSTOMERS OF THE CODING
+* INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
+*******************************************************************************/
+
+/* Includes ------------------------------------------------------------------*/
+#include "stm32f0xx.h"
+#include <PlayMode.h>
+#include "hardware_conf.h"
+#include <stdio.h>
+#include <string.h>
+#include "InitIQS333.h"
+
+/* Private typedef -----------------------------------------------------------*/
+/* Private define ------------------------------------------------------------*/
+
+
+
+u8   Rev_ok=0;
+u8   exit_set=0;
+extern u8  USRT_Buffer[7];
+u16  Temperature,Weight;
+
+//new defined valuable as below
+u8  Heat;         // heat sign
+u8  Warm;         // keep warm sign                
+u8  Warmtemp;     // keep warm temp valuable
+u8  Warmheat;     // heating inorder to keep warm sign
+u8  CheckTime;    // 0.5S check a time
+u8  ledstate;     // use led slight
+u8  WarmEnable;   // can start warm operation（usually enable after heat complete）
+u8  HeatCRC;      // temp compare，after turn off heat device
+u8  WaterTemp;    // real-time water temperature
+u8  WaterWeight;
+u8  CWaterWeight;
+u8  HeatCRCStart; //start temp compare，after turn off heat device 15S
+u8  HeatCRCTime;  //Timer, =0 start temp compare
+u8  FirstCRC;     //
+u8  Telecontrol;  //wifi Telecontrol
+u8  Keycontrol;   // Keyboard operation
+u16 LightHeatOffTime;
+u8  WarmOK;
+u32 WarmTime;
+u8  Mystate,MystatePre;
+u8  bFlagOK;
+u8  TeaPotHub;
+u8  Pre_TeaPotHub;
+u8  Factor_Set_Sign;
+u8  EnCool;
+u8  EnSendHubState;
+u16  TimeSendHubState;
+u8  Connect_Service;
+u8  FactorSign;
+u8  cmdmode;
+u16 DelayNum10ms=0;
+u8  WifiConnectok=0;
+u16 OffLineTime;
+u16 Read_RequstTime;
+u8  Read_Requst;
+u8  Finish=0;
+u16 FinishTime=0;
+u8  StartTime=0;
+u8  ModeReadOk=0;
+u8  WifiMode=0;
+u8  Keyend=0;
+u8  App_OnLine=1;
+u8  RelayOn=0;
+u32 RelayOnTime;
+u8  TryConnectWan=0;
+u16 TryConnectWanTime=0;
+u8  TimeSync=0;
+u8  FirstPowerOn;
+u8  Weight_Verf_Sign;
+u16 WEIGHT_VERIFY;
+u8  KeyEvent=0;
+u8  mainloop=0;
+  
+u16  Pure_Time;
+u8   SendTime=0;
+
+
+
+//u8   KeyPress[7];
+
+u8 Purify=0;
+u8 Boil=0;
+u8 CommRcvBuf[512];
+u8 UartSend_Buffer3[512];
+
+u8 RecvWifiCmd[64];
+u8 *RecvWifiCmdEnd;
+u8 RcvDate[30];
+
+u8 WaterWeight_tb[64];
+u8 *WaterWeight_tbstart,*WaterWeight_tbend;
+u8  adcok;
+
+HeatInfo   OrderTable[16];
+u8  Ordernum=0;
+
+HeatRecord RecordTable[10];
+u8  RecordNum=0;
+
+u8  TeleWarmTime=0;
+u8  PhoneID[37];
+u8  LastTime[15]="20141021143005";
+u8  MachineID[21]="01201410251835151111";
+//uc8 MachineID_Default[21]="01888888888888888888";
+uc8 MachineID_Default[21]="01010115021110123456";
+u8  Orderid[17];
+u8  Operation;
+u16 StateTime=0;
+u8  OrderOperState=0;
+u16 RcvokTime=60;
+
+u8  TYear;
+u8  TMon;
+u8  TDay;
+u8  THour;
+u8  TMin;
+u8  TSec;
+u8  TWeek;
+u32 SecondTime;
+u8  UpdateState;
+u8  wtmp,wtmppre;
+u8  wtmp2=0;
+u8  KeyEnable;
+u8  Key_end_Telecontrol=0;
+u8  WifiLight=0;
+u8  LED_Buff[8]={
+    0x1f,
+    0x1f,
+    0x1f,
+    0x1f,
+    0x1f,
+    0x1f,
+    0x1f,
+    0x1f,};
+
+uc8  manual[37]={'m','a','n','u','a','l',};
+/*uc16 Temp_Table[120]={163, 171, 179, 188, 197, 207, 217, 227, 238, 249,    //0~9℃
+                      261, 273, 285, 298, 311, 325, 339, 354, 369, 385,    //10~19℃
+                      401, 418, 435, 453, 471, 490, 510, 530, 550, 571,    //20~29℃
+                      593, 615, 638, 661, 684, 708, 733, 758, 784, 810,    //30~39℃
+                      837, 864, 891, 920, 948, 977, 1007,1037,1067,1097,   //40~49℃
+                      1129,1160,1192,1224,1256,1289,1322,1355,1389,1422,   //50~59℃
+                      1456,1490,1525,1559,1593,1628,1662,1696,1731,1765,   //60~69℃
+                      1800,1835,1869,1903,1938,1972,2006,2040,2074,2107,   //70~79℃
+                      2141,2172,2202,2232,2262,2292,2326,2359,2392,2425,   //80~89℃
+                      2457,2488,2518,2547,2577,2605,2634,2661,2689,2716,   //90~99℃
+                      2742,2768,2794,2819,2844,2869,2893,2917,2940,2963,   //100~109℃
+                      2986,3008,3030,3051,3072,3092,3113,3133,3153,3172 }; //110~119℃*/
+
+
+
+uc16 Temp_Table[126]={162,170,178,187,197,206,216,227,238,249,           //0~9℃
+                      260,272,285,298,311,325,339,354,370,385,           //10_19℃
+                      402,418,436,453,472,490,510,530,550,571,           //20_29℃
+                      592,614,637,660,683,707,732,757,783,809,           //30_39℃
+                      835,862,890,918,946,975,1004,1034,1064,1095,       //40_49℃
+                      1126,1157,1189,1221,1253,1285,1318,1351,1384,1418, //50_59℃
+                      1452,1485,1519,1554,1588,1622,1657,1691,1725,1760, //60_69℃
+                      1794,1829,1863,1897,1932,1966,2000,2033,2067,2101, //70_79℃
+                      2134,2167,2200,2232,2265,2297,2328,2360,2391,2422, //80_89℃
+                      2452,2483,2512,2542,2571,2600,2628,2656,2684,2711, //90_99℃
+                      2738,2765,2791,2816,2842,2867,2891,2915,2939,2962, //100_109℃
+                      2985,3008,3030,3052,3073,3094,3114,3135,3154,3174, //110_119℃
+                      3193,3212,3230,3248,3266,3283};                    //120_125℃
+
+uc16 Weight_Table1[50]={  79, 158, 236, 315, 394, 473, 552, 630, 709, 788,  //0.1--1.0kg
+                        867, 946,1024,1103,1182,1261,1340,1418,1497,1576,  //1.1--2.0kg
+                       1655,1734,1813,1891,1970,2049,2128,2207,2285,2364,  //2.1--3.0kg
+                       2443,2522,2601,2679,2758,2837,2916,2995,3073,3152,  //3.1--4.0kg
+                       3231,3310,3389,3467,3546,3625,3704,3783,3861,3940,};//4.1--5.0kg
+
+uc16 Weight_Table2[50]={39,79,118,158,197,236,276,315,355,394,
+                       433,473,512,552,591,630,670,709,749,788,
+                       827,867,906,946,985,1024,1064,1103,1143,1182,
+                       1221,1261,1300,1340,1379,1418,1458,1497,1537,1576,
+                       1615,1655,1694,1734,1773,1812,1852,1891,1931,1970,};
+
+uc16 Weight_Table3[50]={52,104,157,209,261,313,366,418,470,522,
+                       574,627,679,731,783,836,888,940,992,1044,
+                       1097,1149,1201,1253,1306,1358,1410,1462,1514,1567,
+                       1619,1671,1723,1775,1828,1880,1932,1984,2037,2089,
+                       2141,2193,2245,2298,2350,2402,2454,2507,2559,2611,};
+
+uc16 Weight_Table[50]={211,243,275,307,339,371,403,435,467,499,
+                       535,570,605,640,680,715,750,785,819,
+                       851,883,915,947,979,1011,1043,1449,1499,
+                       1549,1599,1649,1699,1749,1799,1849,1899,1949,1999,
+                       2049,2099,2149,2199,2249,2299,2349,2399,2449,2499,2549,};
+
+
+uc8 TempTable5[101]={0,1,2,3,4,5,6,7,8,9,10,
+11,12,13,14,15,16,17,18,19,20,
+21,22,23,24,25,26,27,28,29,30,
+31,32,33,34,35,38,40,41,43,44,
+46,47,49,50,52,54,54,56,58,60,
+61,62,63,64,65,66,67,68,69,70,
+71,72,73,74,75,76,77,78,79,80,
+81,82,83,84,85,86,87,88,89,90,
+91,92,93,93,94,94,94,95,95,96,
+96,97,98,98,99,99,100,100,100,100};
+
+
+uc8 TempTable6[101]={0,1,2,3,4,5,6,7,8,9,10,
+11,12,13,14,15,16,17,18,19,20,
+21,22,23,24,25,26,27,28,29,30,
+31,32,33,34,35,37,39,41,43,44,
+45,46,48,50,51,53,54,55,56,58,
+59,60,61,62,63,64,65,66,67,68,
+69,70,71,72,73,74,75,76,77,78,
+79,80,81,82,83,84,85,86,87,88,
+89,90,91,91,92,92,93,94,94,95,
+96,96,97,98,99,99,100,100,100,100};
+
+uc8 TempTable7[101]={0,1,2,3,4,5,6,7,8,9,10,
+11,12,13,14,15,16,17,18,19,20,
+21,22,23,24,25,26,27,28,29,30,
+31,32,33,34,35,37,39,41,43,44,
+45,46,48,50,51,52,53,54,55,57,
+58,59,60,61,62,63,64,65,66,67,
+68,69,70,71,72,73,74,75,76,77,
+78,79,80,81,82,83,84,85,86,87,
+88,89,90,90,91,92,92,93,94,94,
+95,96,97,98,98,99,99,100,100,100};
+
+uc8 TempTable8[101]={0,1,2,3,4,5,6,7,8,9,10,
+11,12,13,14,15,16,17,18,19,20,
+21,22,23,24,25,26,27,28,29,30,
+31,32,33,34,35,37,39,41,43,44,
+45,46,47,48,50,51,52,53,54,55,
+56,57,58,59,60,61,62,63,64,65,
+66,67,68,69,70,71,72,73,74,75,
+76,77,78,79,80,81,82,83,84,85,
+86,87,88,89,90,90,91,92,92,93,
+94,95,96,97,98,98,99,99,100,100};
+
+uc8 TempTable9[101]={0,1,2,3,4,5,6,7,8,9,10,
+11,12,13,14,15,16,17,18,19,20,
+21,22,23,24,25,26,27,28,29,30,
+31,32,33,34,35,37,39,41,43,44,
+45,46,47,48,49,50,51,52,53,54,
+55,56,57,58,59,60,61,62,63,64,
+65,66,67,68,69,70,71,72,73,74,
+75,76,77,78,79,80,81,82,83,84,
+85,86,87,88,89,90,90,91,92,92,
+93,94,95,96,97,98,98,99,100,100};
+
+//10=11
+uc8 TempTable10[101]={0,1,2,3,4,5,6,7,8,9,10,
+11,12,13,14,15,16,17,18,19,20,
+21,22,23,24,25,26,27,28,29,30,
+31,32,33,34,35,37,39,41,43,44,
+45,46,47,48,49,50,51,52,53,54,
+55,56,57,58,59,60,61,61,62,63,
+64,65,66,67,68,69,70,71,72,73,
+74,75,76,77,78,79,80,81,82,83,
+84,85,86,87,88,89,90,91,91,92,
+93,94,95,96,97,98,98,99,100,100};
+
+//12=13
+uc8 TempTable12[101]={0,1,2,3,4,5,6,7,8,9,10,
+11,12,13,14,15,16,17,18,19,20,
+21,22,23,24,25,26,27,28,29,30,
+31,32,33,34,35,36,38,40,42,43,
+44,45,46,47,48,49,50,51,52,53,
+54,55,56,57,58,59,60,60,61,62,
+63,64,65,66,67,68,69,70,71,72,
+73,74,75,76,77,78,79,80,81,82,
+83,84,85,86,87,88,89,90,91,92,
+92,93,94,95,96,97,98,99,100,100};
+
+//14=15
+uc8 TempTable14[101]={0,1,2,3,4,5,6,7,8,9,10,
+11,12,13,14,15,16,17,18,19,20,
+21,22,23,24,25,26,27,28,29,30,
+31,32,33,34,35,36,37,38,40,41,
+42,43,44,45,46,47,48,49,50,51,
+52,53,54,55,56,57,58,59,60,61,
+62,63,64,65,66,67,68,69,70,71,
+72,73,74,75,76,77,78,79,80,81,
+82,83,84,85,86,87,88,89,90,91,
+92,93,94,95,96,97,98,99,99,100};
+
+
+//  >=16
+uc8 TempTable16[101]={0,1,2,3,4,5,6,7,8,9,10,
+11,12,13,14,15,16,17,18,19,20,
+21,22,23,24,25,26,27,28,29,30,
+31,32,33,34,35,36,37,38,39,40,
+41,42,43,44,45,46,47,48,49,50,
+51,52,53,54,55,56,57,58,59,60,
+61,62,63,64,65,66,67,68,69,70,
+71,72,73,74,75,76,77,78,79,80,
+81,82,83,84,85,86,87,88,89,90,
+91,92,93,94,95,96,97,98,99,100};
+
+uc8 TableObj[16]={0,0,0,0,0,1,1,1,1,2,2,2,3,3,3,4};
+uc8 Table_L[18]={10,10,10,10,10,10,8,7,5,4,3,3,2,2,1,1,0,0};
+uc8 Table_H[18]={10,10,10,9,7,5,4,4,3,2,2,2,1,1,1,1,0,0};
+
+//new defined valuable as up
+
+/* Private macro -------------------------------------------------------------*/
+/* Private variables ---------------------------------------------------------*/
+
+u16 ADC_ConvertedValue[64];
+u8  NumberOfAD=0;
+
+u16 adcconvertime=0;
+
+
+/* Private function prototypes -----------------------------------------------*/
+void RCC_Configuration(void);
+void GPIO_Configuration(void);
+void NVIC_Configuration(void);
+void USART_Configuration(void);
+void RTC_Configuration(void);
+void Init_ADC(void);
+void IWDG_Configuration(void);
+void Leddisp(u8 tempvalue,u8 state);
+void Init_Exit(void);
+//u8 TempAdjust(u8 temp);
+void ADConverData(void);
+void Heat_Offline(void);
+void Heat_Online(void);
+void CommProc3(void);
+void DataReturn(u8 num);
+static int get_parmer(unsigned char *str,unsigned char *name,unsigned char *context,unsigned char chr);
+static int get_telparmer(unsigned char *str,unsigned char *name,unsigned char *context,unsigned char chr);
+void Rst_Value(void);
+void http_send(u8 *sendbuf,u8 *path);
+void DelayN10ms(u16 time);
+void set_mode(u8 mode);
+void WaitConnect(void);
+u8 Tel_scan(void);
+void CheckOrder(void);
+void TIM3_Init();
+void TIM2_Init();
+u16 AD_sysGetAdcResult(u8 Channel);
+void Get_ADC_Value(void);
+u8 TempRef(u8 tempnow);
+u8 ObjVref(u8 tempobj);
+void Init_I2C(void);
+void Init_IQS333(void);
+u8 I2C1_Write_NBytes(u8 driver_Addr, u8 start_Addr, u8 number_Bytes, u8 *write_Buffer);
+u8 I2C1_Read_NBytes(u8 driver_Addr, u8 start_Addr, u8 number_Bytes, u8 *read_Buffer);
+void KeyProcess(void);
+void Restart_WifiMode(void);
+/* Private functions ---------------------------------------------------------*/
+
+void Init_Value(void)
+{
+  u8 i;
+  Heat=0;      // heat sign
+  Warm=0;      // keep warm sign                
+  Warmtemp=0;  // keep warm temp valuable
+  Warmheat=0;
+  CheckTime=0;
+  ledstate=1;
+  WarmEnable=0;
+  EnCool=0;
+  HeatCRC=0;
+  Temperature=0;
+  WaterTemp=0;
+  WaterWeight=0;
+  HeatCRCStart=0;
+  HeatCRCTime=0;
+  FirstCRC=0;
+  Telecontrol=0;
+  Keycontrol=0;
+  LightHeatOffTime=0;
+  WarmOK=0;
+  WarmTime=0;
+  Pure_Time=0;
+  adcok=0;
+  Mystate=0;
+  MystatePre=0;
+  bFlagOK=0;
+  TeaPotHub=0;
+  Pre_TeaPotHub=0;
+  //memset(OrderTable,0,sizeof(HeatInfo)*16);
+  memset(RecordTable,0,sizeof(HeatRecord)*10);  //Orderid
+  memcpy(PhoneID,manual,37);
+  memset(Orderid,0,17);
+  Factor_Set_Sign=0;
+  EnSendHubState=0;
+  TimeSendHubState=0;
+  RecvWifiCmdEnd=RecvWifiCmd;
+  cmdmode=0;
+  DelayNum10ms=0;
+  FirstPowerOn=1;
+  App_OnLine=1;
+  Weight_Verf_Sign=0;
+  wtmp=0;
+  wtmppre=0;
+   
+  TYear=10;
+  TMon=1;
+  TDay=1;
+  THour=8;
+  TMin=0;
+  TSec=0;
+  TWeek=5;  
+  SecondTime=THour*3600;  
+  UpdateState=0;
+  KeyEnable=30;
+
+  for(i=0;i<64;i++)
+  {
+    WaterWeight_tb[i]=0;
+  }
+  WaterWeight_tbstart=WaterWeight_tbend=WaterWeight_tb;  
+}
+
+void delay(u16 num)
+{
+  u16 i,j;
+  for(i=0;i<num;i++)
+    for(j=0;j<0x1000;j++);
+}
+/*******************************************************************************
+* Function Name  : main
+* Description    : Main program
+* Input          : None
+* Output         : None
+* Return         : None
+*******************************************************************************/
+
+int main(void)
+{
+  u8  i;
+  u16 j;
+  u8  str_tmp[4];
+  u16  Flash_tmp[4];
+
+#ifdef DEBUG
+  debug();
+#endif
+  /* Init_Value --------------------------------------------------------------*/
+  //SystemReset:
+  Init_Value();  
+  /* System clocks configuration ---------------------------------------------*/
+  RCC_Configuration();
+  /* NVIC configuration ------------------------------------------------------*/
+  NVIC_Configuration();
+  /* GPIO configuration ------------------------------------------------------*/
+  GPIO_Configuration();  
+  SysTick_Config(SYSTIME);  
+  //TIM2_Init();
+  Init_I2C();
+  WIFI_PWR(1);
+  WifiLedCtl(0); 
+  Leddisp(SIX_LIGHT_ON,1);
+  /* USART_Configuration -----------------------------------------------------*/
+  USART_Configuration();  
+  TIM3_Init(); 
+  
+  /* Configure the systick -----------10mS------------------------------------*/
+  
+  /* IWDG_Configuration ------------------------------------------------------*/
+  IWDG_Configuration();  
+  /* Delay_Configuration -----------------------------------------------------*/
+  //delay_init(72);  
+  /* ADC_DMA_Configuration ---------------------------------------------------*/
+  Init_ADC();  
+    
+  Speak(1);    /////开机响一声  All_LIGHT_ON
+  //LightHeatOffTime=LIGHT_HEAT_OFF_TIME;
+  //LIGHTHEATOFF;
+  //WARM_LIGHT(0);
+  StartTime=10;    
+  Init_IQS333();
+  Init_Exit();
+   
+  //DelayN10ms(100);  
+  //DelayN10ms(5);
+  //while(GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_5)==1);
+  //Leddisp(WIFI_KEY,1);  
+  //WifiLedCtl(0);  
+  //RTC_Configuration();  
+  /*read machine id*/
+  //write_flash(ID_START_ADDR,(u16 *)MachineID_Default,20);
+  read_flash(ID_START_ADDR,(u32 *)MachineID,20);
+  MachineID[20]=0;
+  if((MachineID[0]>0x80) || (MachineID[0]<1))
+  {
+    memcpy(MachineID,MachineID_Default,21);    
+  }  
+  /*read weight verf value*/
+  read_flash(WEIGHT_VERF_ADDR,(u32 *)Flash_tmp,4);
+  WEIGHT_VERIFY=Flash_tmp[0];  
+  if(WEIGHT_VERIFY>3500 || WEIGHT_VERIFY<1)
+  {
+      Flash_tmp[0]=WEIGHT_VERIFY_DEFAULT;
+      Flash_tmp[1]=WEIGHT_VERIFY_DEFAULT;
+      WEIGHT_VERIFY=WEIGHT_VERIFY_DEFAULT;
+      write_flash(WEIGHT_VERF_ADDR,Flash_tmp,4);      
+  }    
+  /*read factor sign*/
+  read_flash(FACTOR_START_ADDR,(u32 *)str_tmp,4);
+  FactorSign=str_tmp[0];  
+  Leddisp(SIX_LIGHT_OFF,1);
+  /* 恢复出厂时进入*/
+  if(FactorSign>0)
+  {
+    read_flash(CANSHU_START_ADDR,(u32 *)str_tmp,4);
+    if(str_tmp[0]>0)    //自动注册模式
+    {
+      DelayN10ms(700);
+      if(Factor_Set_Sign==1)
+        goto maincycloop;
+      UART2_Send_Missage("at+xcmd_req::cmd=sockset,id=0,mode=1,lport=8080,rhost=192.168.2.3,rport=5000,");
+      DelayN10ms(100); 
+      if(Factor_Set_Sign==1)
+        goto maincycloop;
+      UART2_Send_Missage("at+xcmd_req::cmd=sockset,id=1,mode=2,lport=5000,rhost=121.40.70.170,rport=8081,");
+      DelayN10ms(100); 
+      if(Factor_Set_Sign==1)
+        goto maincycloop;
+      UART2_Send_Missage("at+xcmd_req:10:cmd=wifiset,wtype=0,ssid=SY415,pass=liujun5885562,enc=7,xopt=3,");
+      DelayN10ms(900); 
+      if(Factor_Set_Sign==1)
+        goto maincycloop;
+      Connect_Service=1;
+      
+      while(1)
+      {
+        DataReturn(1);   //自动注册
+        bFlagOK=0;
+        DelayNum10ms=200;
+        while(bFlagOK==0)
+        {
+          if(DelayNum10ms==0)
+            break;
+        }
+        DelayNum10ms=0;
+        if(bFlagOK==1)
+        {
+          bFlagOK=0;
+          OffLineTime=OFF_LINE_TIME;
+          break;
+        }
+      }
+      //Humi_Temp_Test(); //读取温湿度
+      //DataReturn(3);
+      str_tmp[0]=str_tmp[1]=0;
+      write_flash(CANSHU_START_ADDR,(u16 *)str_tmp,2);
+      write_flash(FACTOR_START_ADDR,(u16 *)str_tmp,2);
+      FactorSign=0;      
+    }
+    else     // smartconfig 模式
+    {
+      WifiLedCtl(1);
+      DelayN10ms(700);
+      if(Factor_Set_Sign==1)
+        goto maincycloop;
+      UART2_Send_Missage("at+xcmd_req::cmd=sockset,id=0,mode=1,lport=8080,rhost=192.168.2.3,rport=5000,");
+      DelayN10ms(100);
+      if(Factor_Set_Sign==1)
+        goto maincycloop;
+      UART2_Send_Missage("at+xcmd_req::cmd=sockset,id=1,mode=2,lport=5000,rhost=121.40.70.170,rport=8081,xopt=3,");//121.40.70.170
+      DelayN10ms(900);
+      if(Factor_Set_Sign==1)
+        goto maincycloop;
+      UART2_Send_Missage("at+xcmd_req::cmd=smartconfig,");
+      DelayN10ms(20);
+      if(Factor_Set_Sign==1)
+        goto maincycloop;
+      Connect_Service=0;
+    }    
+  }
+  /*read order data*/
+  read_flash(ORDER_START_ADDR,(u32 *)OrderTable,992);
+  j=0;
+  for(i=0;i<16;i++)
+  {
+    if(OrderTable[i].Warmtemp==0)
+    {
+      j=1;
+      Ordernum=i;
+      break;
+    }    
+  }
+  if(j==0)
+    Ordernum=15;  
+  
+  /****连接状态***/
+  if(FactorSign==0)
+  {
+    //DelayN10ms(500);    
+    //WaitConnect();
+  }
+  /*******/
+  cmdmode=0;
+  if(FactorSign==0)
+    Connect_Service=1;
+  else
+    Connect_Service=0;
+  
+  //SysTick_Config(SYSTIME);
+  
+  bFlagOK=0;
+#if 1
+  OffLineTime=OFF_LINE_TIME;
+  //mainloop=1;
+  //WifiLedCtl(0);
+maincycloop:
+  while(1)
+  {
+    /* 1、Hand end telecontrol*/
+    if(Key_end_Telecontrol==1)
+    {
+      StartTime=0;
+      Key_end_Telecontrol=0;
+      Speak(1);
+      Finish=1;
+      FinishTime=0; 
+      Keyend=1;
+      
+      if(OrderOperState!=0)
+      {
+        OrderOperState=2;
+        DelayN10ms(50);
+        bFlagOK=0;
+        //memset(CommRcvBuf,0,512);
+        DataReturn(7);
+        bFlagOK=0;
+        DelayN10ms(50);
+        if(bFlagOK==1)
+        {
+          bFlagOK=0;
+          OffLineTime=OFF_LINE_TIME;
+        }
+      }
+      LastTime[0]=0x32;
+      LastTime[1]=0x30;
+      LastTime[2]=0x30 + TYear/10;
+      LastTime[3]=0x30 + TYear%10;
+      LastTime[4]=0x30 + TMon/10;
+      LastTime[5]=0x30 + TMon%10;
+      LastTime[6]=0x30 + TDay/10;
+      LastTime[7]=0x30 + TDay%10;
+      LastTime[8]=RecordTable[RecordNum].endtime[0]=THour/10 + 0x30;
+      LastTime[9]=RecordTable[RecordNum].endtime[1]=THour%10 + 0x30;
+      LastTime[10]=RecordTable[RecordNum].endtime[2]=TMin/10 + 0x30;
+      LastTime[11]=RecordTable[RecordNum].endtime[3]=TMin%10 + 0x30;
+      LastTime[12]=RecordTable[RecordNum].endtime[4]=TSec/10 + 0x30;
+      LastTime[13]=RecordTable[RecordNum].endtime[5]=TSec%10 + 0x30;
+      LastTime[14]=RecordTable[RecordNum].endtime[6]=0;
+      RecordTable[RecordNum].energy=((RelayOnTime/100)*TEAPOTPOWER)/3600;
+      
+      RecordNum++;
+      if(RecordNum>10)
+        RecordNum=9;      
+      Rst_Value();
+      WARM_LIGHT(0);
+      Leddisp(HEAT_TEMP100,0);/*2015-11-29*/
+      // 如果是预约，告知服务器预约手动取消 code      
+      if(Connect_Service==0)
+      {
+        DataReturn(5);
+      }
+      else if(Connect_Service==1)
+      {
+        DelayN10ms(50);
+        bFlagOK=0;
+        //memset(CommRcvBuf,0,512);
+        DataReturn(3);
+        bFlagOK=0;
+        DelayN10ms(50);
+        if(bFlagOK==1)
+        {
+          bFlagOK=0;
+          OffLineTime=OFF_LINE_TIME;
+        }
+        else  //第二次
+        {
+          bFlagOK=0;
+          DataReturn(3);
+          bFlagOK=0;
+          DelayN10ms(50);
+          if(bFlagOK==1)
+          {
+            bFlagOK=0;
+            OffLineTime=OFF_LINE_TIME;
+          }
+        }       
+      }
+    }    
+    /* 2、conver ADC to the water temp、WaterWeight         */  
+    Get_ADC_Value();
+    ADConverData();     
+    
+    if(EnSendHubState==1 ) //水壶放到底座上2.5S后发送状态至服务器
+    {
+      WaterWeight=CWaterWeight;
+      if(Connect_Service==0)
+      {
+        EnSendHubState=0;
+        DataReturn(5);
+      }            
+      else if(WifiLight==1)
+      {
+        EnSendHubState=0;
+        DataReturn(3);
+        bFlagOK=0;
+        DelayNum10ms=200;
+        while(bFlagOK==0)
+        {
+          if(DelayNum10ms==0)
+            break;
+        }
+        DelayNum10ms=0;
+        if(bFlagOK==1)
+        {
+           bFlagOK=0;
+           OffLineTime=OFF_LINE_TIME;
+        }
+        else   //第二次
+        {
+          //memset(CommRcvBuf,0,512);
+          bFlagOK=0;
+          DataReturn(3);
+          //bFlagOK=0;
+          DelayNum10ms=200;
+          while(bFlagOK==0)
+          {
+            if(DelayNum10ms==0)
+              break;
+          }
+          DelayNum10ms=0;
+          if(bFlagOK==1)
+          {
+            bFlagOK=0;
+            OffLineTime=OFF_LINE_TIME;
+          }
+        }        
+      }
+    }        
+    /* 3、Get service request   */  
+    if(Connect_Service==1)
+    {
+      if(RcvokTime<30 && WifiLight==0)       // success connect to app service
+      {
+        Leddisp(WIFI_KEY,1);
+        WifiLight=1;
+      }        
+      else if(RcvokTime>60 && WifiLight==1) // disconnect with app service
+      {
+        Leddisp(WIFI_KEY,0);
+        WifiLight=0;
+      }
+      
+      if(TimeSendHubState==0)
+        Tel_scan();
+    }
+    /* 4、与服务器断开连接。超时 重启wifi模块*/
+    if(OffLineTime==0 && Connect_Service==1)           
+    {
+      Restart_WifiMode();
+    }
+    if(Connect_Service>1)  
+    {
+      //__set_FAULTMASK(1);    // 关闭所有中端 
+      NVIC_SystemReset();      // 复位 
+    }
+    //else if(TimeSync==1) /* time syns in lan*/
+    //{
+      //TimeSync=0;
+     // DataReturn(7);
+    //} 
+     
+    if(Telecontrol==1 || Keycontrol==1)
+      App_OnLine=1;
+        
+    /* 5、Heating the water when enable heat & teapot is hub Through Keyboard operation  */
+    Heat_Offline();    
+    
+    /* 6、Heating the water when enable heat & teapot is hub Through Wifi Telecontrol    */
+    Heat_Online();      
+    
+    /* 7、Mystate check */
+    if(Mystate!=MystatePre)
+    {
+      MystatePre=Mystate;
+      StateTime=0;
+      if(Mystate==0 && Keyend==1)  //按键结束
+      {
+              Keyend=0;
+              if(Connect_Service==0)
+                DataReturn(5);
+              else
+              {
+                  //memset(CommRcvBuf,0,512);
+                  DelayN10ms(20);
+                  DataReturn(3);
+                  bFlagOK=0;
+                  DelayNum10ms=200;
+                  while(bFlagOK==0)
+                  {
+                    if(DelayNum10ms==0)
+                      break;
+                  }
+                  DelayNum10ms=0;
+                  if(bFlagOK==1)
+                  {
+                    bFlagOK=0;
+                    OffLineTime=OFF_LINE_TIME;
+                  }                  
+                  else   //第二次
+                  {
+                    //memset(CommRcvBuf,0,512);
+                    bFlagOK=0;
+                    DataReturn(3);
+                    //bFlagOK=0;
+                    DelayNum10ms=200;
+                    while(bFlagOK==0)
+                    {
+                      if(DelayNum10ms==0)
+                        break;
+                    }
+                    DelayNum10ms=0;
+                    if(bFlagOK==1)
+                    {
+                      bFlagOK=0;
+                      OffLineTime=OFF_LINE_TIME;
+                    }
+                  }
+              }              
+              //memset(PhoneID,0,37);
+              memcpy(PhoneID,manual,37);
+      }
+    }    
+    /* Uart3 receve data process */
+    CommProc3();    
+    /* Check Order */
+    CheckOrder();    
+    /* Factor_Set_Sign */
+    if(Factor_Set_Sign==1)
+    {
+      Factor_Set_Sign=0;
+      u8 temp[8];
+      for(i=0;i<8;i++)
+          temp[i]=0x01;
+      write_flash(FACTOR_START_ADDR,(u16 *)temp,4); 
+      Speak(1);
+      DelayN10ms(150);
+      Speak(0);
+      //__set_FAULTMASK(1);      // 关闭所有中端 
+      NVIC_SystemReset();      // 复位 
+      //goto SystemReset;
+    } 
+    /* Try to connect WAN */ 
+   /* if(TryConnectWan==1 && Connect_Service==0)
+    {
+      TryConnectWan=0;            
+      Connect_Service=1;
+      DelayN10ms(20);
+      memset(CommRcvBuf,0,512);
+      bFlagOK=0;
+      DataReturn(3);
+      bFlagOK=0;
+      DelayNum10ms=300;
+      while(bFlagOK==0)
+      {
+        if(DelayNum10ms==0)
+          break;
+      }
+      DelayNum10ms=0;      
+      
+      if(bFlagOK==1)  // 外网有返回
+      {
+         bFlagOK=0;
+         OffLineTime=OFF_LINE_TIME;
+         Connect_Service=1;
+         TimeSync=1;
+      }
+      else           // 外网无返回
+      {
+        Connect_Service=0;
+         TryConnectWanTime=CONNECT_WAN_TIME;
+      }      
+    }   */   
+    
+    /* 空闲时，每隔1分钟更新一下水壶的状态*/
+    if(UpdateState==1)
+    {
+      UpdateState=0;
+      if(Telecontrol==0 && Keycontrol==0)
+      {      
+        if(Connect_Service==0)
+        {
+          DataReturn(5);
+        }
+        else
+        {
+            //memset(CommRcvBuf,0,512);
+            DelayN10ms(20);
+            DataReturn(3);
+            bFlagOK=0;
+            DelayNum10ms=200;
+            while(bFlagOK==0)
+            {
+              if(DelayNum10ms==0)
+                break;
+            }
+            DelayNum10ms=0;
+            if(bFlagOK==1)
+            {
+               bFlagOK=0;
+               OffLineTime=OFF_LINE_TIME;
+            }                  
+            else   //第二次
+            {
+              //memset(CommRcvBuf,0,512);
+              bFlagOK=0;
+              DataReturn(3);
+              bFlagOK=0;
+              DelayNum10ms=200;
+              while(bFlagOK==0)
+              {
+                if(DelayNum10ms==0)
+                  break;
+              }
+              DelayNum10ms=0;
+              if(bFlagOK==1)
+              {
+                bFlagOK=0;
+                OffLineTime=OFF_LINE_TIME;
+              }
+            }
+          }
+        }
+      }    
+  }
+#endif
+}
+
+/*******************************************************************************
+* Function Name  : RCC_Configuration
+* Description    : Configures the different system clocks.
+* Input          : None
+* Output         : None
+* Return         : None
+*******************************************************************************/
+void RCC_Configuration(void)
+{
+  //ErrorStatus HSEStartUpStatus;
+  /* RCC system reset(for debug purpose) */
+  //RCC_DeInit();
+
+  /* Enable HSE */
+  //RCC_HSEConfig(RCC_HSE_ON);
+
+  /* Wait till HSE is ready */
+ // HSEStartUpStatus = RCC_WaitForHSEStartUp();
+
+  //if(HSEStartUpStatus == SUCCESS)
+  //{
+    /* Enable Prefetch Buffer */
+   // FLASH_PrefetchBufferCmd(FLASH_PrefetchBuffer_Enable);
+
+    /* Flash 2 wait state */
+   // FLASH_SetLatency(FLASH_Latency_1);
+
+    /* HCLK = SYSCLK */
+   // RCC_HCLKConfig(RCC_SYSCLK_Div1);
+
+    /* PCLK2 = HCLK */
+   // RCC_PCLKConfig(RCC_HCLK_Div1);
+
+    /* PCLK1 = HCLK/2 */
+   // RCC_PCLKConfig(RCC_HCLK_Div2);
+
+    /* ADCCLK = PCLK2/2 */
+   // RCC_ADCCLKConfig(RCC_ADCCLK_PCLK_Div4);
+
+    /* PLLCLK = 8MHz * 9 = 72 MHz */
+   // RCC_PLLConfig(RCC_PLLSource_PREDIV1, RCC_PLLMul_6);
+
+    /* Enable PLL */
+   // RCC_PLLCmd(ENABLE);
+
+    /* Wait till PLL is ready */
+   // while(RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET)
+   // {
+   // }
+    /* Select PLL as system clock source */
+   // RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
+    /* Wait till PLL is used as system clock source */
+   // while(RCC_GetSYSCLKSource() != 0x08)
+   // {
+   // }
+ // }
+
+/* Enable peripheral clocks --------------------------------------------------*/
+
+
+  RCC_AHBPeriphClockCmd( RCC_AHBPeriph_GPIOA | RCC_AHBPeriph_GPIOB | RCC_AHBPeriph_FLITF | RCC_AHBPeriph_SRAM , ENABLE);
+  
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG | RCC_APB2Periph_ADC1 | RCC_APB2Periph_USART1 | RCC_APB2Periph_DBGMCU, ENABLE);
+  
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2 | RCC_APB1Periph_TIM3 | RCC_APB1Periph_WWDG  , ENABLE ); 
+  
+}
+
+
+
+void Restart_WifiMode(void)
+{
+  WIFI_PWR(0);  
+  Speak(1);
+  StartTime=10; 
+  DelayN10ms(10);
+  WIFI_PWR(1);
+  OffLineTime=OFF_LINE_TIME;  
+  DelayN10ms(500);
+}
+/*******************************************************************************
+* Function Name  : GPIO_Configuration
+* Description    : Configures the different GPIO ports.
+* Input          : None
+* Output         : None
+* Return         : None
+*******************************************************************************/
+void GPIO_Configuration(void)
+{
+  GPIO_InitTypeDef GPIO_InitStructure;
+    
+  /*ADC ADC0  ADC1*/
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1 | GPIO_Pin_0;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL ;  
+  GPIO_Init(GPIOA, &GPIO_InitStructure); 
+    
+  /*USART1*/
+  GPIO_PinAFConfig(GPIOA, GPIO_PinSource9, GPIO_AF_1);//配置PA9成第二功能引脚	TX
+  GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_1);//配置PA10成第二功能引脚  RX	
+  
+  //GPIO_PinAFConfig(GPIOA, GPIO_PinSource13, GPIO_AF_0);
+ // GPIO_PinAFConfig(GPIOA, GPIO_PinSource14, GPIO_AF_0); | GPIO_Pin_13 | GPIO_Pin_14
+
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9 | GPIO_Pin_10 ;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+    
+  /*USART2*/
+  GPIO_PinAFConfig(GPIOA,GPIO_PinSource2,GPIO_AF_1);
+  GPIO_PinAFConfig(GPIOA,GPIO_PinSource3,GPIO_AF_1);
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2|GPIO_Pin_3;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+  
+  /*Relay  Speek Wifi_power*/
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11 | GPIO_Pin_12 | GPIO_Pin_15;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;  
+  GPIO_Init(GPIOA, &GPIO_InitStructure);	
+  GPIOA->BRR=GPIO_Pin_11 | GPIO_Pin_12;
+  GPIOA->BSRR = GPIO_Pin_15;
+  
+  /* SMARTCONFIG WifiLedCtl*/
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3 | GPIO_Pin_4;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;  
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
+  GPIOB->BRR=GPIO_Pin_4;
+  GPIOB->BSRR=GPIO_Pin_3;
+  
+  /*REQ_TS*/
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;  
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
+  
+  /*I2C*/
+  GPIO_PinAFConfig(GPIOB,GPIO_PinSource6,GPIO_AF_1);
+  GPIO_PinAFConfig(GPIOB,GPIO_PinSource7,GPIO_AF_1);
+  
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6|GPIO_Pin_7;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_Level_3;
+  GPIO_Init(GPIOB, &GPIO_InitStructure);  
+
+  //GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);
+}
+
+/**
+  * @brief  Configures the USART1 controller.
+  * @param  None
+  * @retval None
+  */
+
+void USART_Configuration(void)
+{
+  USART_InitTypeDef USART_InitStructure;
+  USART_ClockInitTypeDef  USART_ClockInitStructure;
+
+  USART_InitStructure.USART_BaudRate =BAUD1;
+  USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+  USART_InitStructure.USART_StopBits = USART_StopBits_1;
+  USART_InitStructure.USART_Parity = USART_Parity_No;
+  USART_InitStructure.USART_HardwareFlowControl =   USART_HardwareFlowControl_None;
+  USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+  USART_Init(USART1,& USART_InitStructure);
+
+  USART_ClockInitStructure.USART_Clock = USART_Clock_Disable;
+  USART_ClockInitStructure.USART_CPOL = USART_CPOL_Low;
+  USART_ClockInitStructure.USART_CPHA = USART_CPHA_2Edge;
+  USART_ClockInitStructure.USART_LastBit = USART_LastBit_Disable;
+  USART_ClockInit(USART1,& USART_ClockInitStructure);
+
+  USART_Cmd(USART1, ENABLE);
+  USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);  
+  
+  USART_InitStructure.USART_BaudRate =BAUD2;
+  USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+  USART_InitStructure.USART_StopBits = USART_StopBits_1;
+  USART_InitStructure.USART_Parity = USART_Parity_No;
+  USART_InitStructure.USART_HardwareFlowControl =   USART_HardwareFlowControl_None;
+  USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+  USART_Init(USART2,& USART_InitStructure);
+
+  USART_ClockInitStructure.USART_Clock = USART_Clock_Disable;
+  USART_ClockInitStructure.USART_CPOL = USART_CPOL_Low;
+  USART_ClockInitStructure.USART_CPHA = USART_CPHA_2Edge;
+  USART_ClockInitStructure.USART_LastBit = USART_LastBit_Disable;
+  USART_ClockInit(USART2,& USART_ClockInitStructure);
+
+  USART_Cmd(USART2, ENABLE);
+  USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
+}
+
+void Init_ADC(void)
+{
+  /*ADC_InitTypeDef ADC_InitStructure;
+  DMA_InitTypeDef DMA_InitStructure;  
+  DMA_DeInit(DMA1_Channel1);
+  DMA_InitStructure.DMA_PeripheralBaseAddr = ADC1_DR_Address;
+  DMA_InitStructure.DMA_MemoryBaseAddr = (u32)&ADC_ConvertedValue;
+  DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
+  DMA_InitStructure.DMA_BufferSize =64;
+  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
+  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
+  DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+  DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+  DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
+  DMA_Init(DMA1_Channel1, &DMA_InitStructure);
+  // Enable DMA channel1 
+  DMA_Cmd(DMA1_Channel1, ENABLE);
+  // ADC1 configuration ---独立工作模式
+  ADC_InitStructure.ADC_Mode = ADC_Mode_Independent;
+  ADC_InitStructure.ADC_ScanConvMode = ENABLE;
+  ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;
+  ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None;
+  ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
+  ADC_InitStructure.ADC_NbrOfChannel = 2;
+  ADC_Init(ADC1, &ADC_InitStructure);
+  // ADC1 regular channel2 configuration 扫描顺序及周期
+  ADC_RegularChannelConfig(ADC1, ADC_Channel_2, 1, ADC_SampleTime_55Cycles5);//temp
+  ADC_RegularChannelConfig(ADC1, ADC_Channel_3, 2, ADC_SampleTime_55Cycles5);//weight
+  // Enable ADC1 DMA 
+  ADC_DMACmd(ADC1, ENABLE);
+  // Enable ADC1 
+  ADC_Cmd(ADC1, ENABLE);
+  //Enable ADC1 reset calibaration register 
+  ADC_ResetCalibration(ADC1);
+  // Check the end of ADC1 reset calibration register
+  while(ADC_GetResetCalibrationStatus(ADC1));
+  //Start ADC1 calibaration 
+  ADC_StartCalibration(ADC1);
+  //Check the end of ADC1 calibration 
+  while(ADC_GetCalibrationStatus(ADC1));
+  // Start ADC1 Software Conversion 
+  ADC_SoftwareStartConvCmd(ADC1, ENABLE);*/  
+  
+  ADC_InitTypeDef ADC_InitStructure;
+  
+  /* ADCs DeInit */  
+  ADC_DeInit(ADC1);
+  
+  /* Initialize ADC structure */
+  ADC_StructInit(&ADC_InitStructure);
+  
+  /* Configure the ADC1 in continuous mode with a resolution equal to 12 bits  */
+  ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b;
+  ADC_InitStructure.ADC_ContinuousConvMode = DISABLE;    //单次转换模式
+  ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None;
+  ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
+  ADC_InitStructure.ADC_ScanDirection = ADC_ScanDirection_Upward;
+  ADC_Init(ADC1, &ADC_InitStructure); 
+  
+  /* ADC Calibration */
+  ADC_GetCalibrationFactor(ADC1);
+  
+  /* Enable the ADC peripheral */
+  ADC_Cmd(ADC1, ENABLE);     
+  
+  /* Wait the ADRDY flag */
+  while(!ADC_GetFlagStatus(ADC1, ADC_FLAG_ADRDY)); 
+  
+  /* ADC1 regular Software Start Conv */ 
+  //ADC_StartOfConversion(ADC1);
+  
+}
+
+u16 AD_sysGetAdcResult(u8 Channel)  
+{
+    u16 ad;
+    ADC_ChannelConfig(ADC1, Channel, ADC_SampleTime_55_5Cycles);
+    ADC_ClearFlag(ADC1, ADC_FLAG_EOC);
+    ADC_StartOfConversion(ADC1); 
+    while(ADC_GetFlagStatus(ADC1,ADC_FLAG_EOC)==0);
+    ad = ADC_GetConversionValue(ADC1);
+    return ad; 
+}
+
+void Delayms(u16 ms)
+{
+  u16 i,j;
+  u8 k;
+  for(i=0;i<ms;i++)
+    for(j=0;j<0x0aaa;j++) k++;
+}
+
+void Get_ADC_Value(void)
+{
+  u32 AdcConValue1,AdcConValue2;
+  u8 k;
+  u16 Flash_tmp2[2];  
+  //if(adcconvertime>=0)
+  if(1)
+  {
+    //adcconvertime=0;
+    Delayms(5);
+    ADC_ConvertedValue[NumberOfAD++]=AD_sysGetAdcResult(ADC_Channel_0);
+    Delayms(1);
+    ADC_ConvertedValue[NumberOfAD++]=AD_sysGetAdcResult(ADC_Channel_1);
+    
+    if(NumberOfAD>=64)
+    {
+      NumberOfAD=0;
+      AdcConValue1=0;
+      AdcConValue2=0;
+      for(k=0;k<64;)
+      {
+        AdcConValue1=AdcConValue1+ADC_ConvertedValue[k];
+        AdcConValue2=AdcConValue2+ADC_ConvertedValue[k+1];
+        k=k+2;
+      }
+      if(AdcConValue1/32>TEMP_VERIFY)
+        Temperature=AdcConValue1/32-TEMP_VERIFY;
+      else
+        Temperature=0;     
+      //Temperature=500;////////for test
+      if(Weight_Verf_Sign==1)
+      {
+        Weight_Verf_Sign=0;
+        if((AdcConValue2/32)>(Weight_Table[9]-1))
+          WEIGHT_VERIFY=AdcConValue2/32-Weight_Table[10]-1;
+        else
+          WEIGHT_VERIFY=0;
+        Flash_tmp2[0]=WEIGHT_VERIFY;
+        Flash_tmp2[1]=WEIGHT_VERIFY;        
+        write_flash(WEIGHT_VERF_ADDR,Flash_tmp2,4);
+        Temperature=0;
+        Speak(1);
+        StartTime=100;
+      }        
+      if(AdcConValue2/32>WEIGHT_VERIFY)
+        Weight=AdcConValue2/32-WEIGHT_VERIFY;
+      else
+        Weight=0;      
+      adcok=1;
+    }
+  }  
+}
+
+
+
+/*******************************************************************************
+* Function Name  : NVIC_Configuration
+* Description    : Configures Vector Table base location.
+* Input          : None
+* Output         : None
+* Return         : None
+*******************************************************************************/
+void NVIC_Configuration(void)
+{
+  NVIC_InitTypeDef NVIC_InitStructure;
+
+  
+  /* USART1的NVIC中断配置 */
+  NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPriority = 0x01;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+  
+  /* USART2的NVIC中断配置 */
+  NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPriority = 0x00;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+  
+  /*IRQ*/
+  NVIC_InitStructure.NVIC_IRQChannel = EXTI4_15_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPriority = 0x01;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+
+    /* enabling interrupt */
+  
+  NVIC_InitStructure.NVIC_IRQChannel=TIM3_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+  
+  NVIC_InitStructure.NVIC_IRQChannel=SysTick_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+  /* enabling interrupt   */
+ /* NVIC_InitStructure.NVIC_IRQChannel=TIM2_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);*/
+  
+  /* Configure the SysTick handler priority */
+//  NVIC_SystemHandlerPriorityConfig(SystemHandler_SysTick, 2, 0);
+  /*NVIC_InitStructure.NVIC_IRQChannel=SysTick_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);*/
+}
+
+void IWDG_Configuration(void)
+{ 
+    /* IWDG counter clock: 40KHz(LSI) / 4 = 10 KHz */
+   IWDG_SetPrescaler(IWDG_Prescaler_4);
+   
+   IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable);
+   /* Set counter reload value to 1000 */
+   //该参数允许取值范围为0 – 0x0FFF 
+   IWDG_SetReload(4000);  //400ms        
+   /* Reload IWDG counter */
+   IWDG_ReloadCounter();
+   /* Enable IWDG (the LSI oscillator will be enabled by hardware) */
+   IWDG_Enable();
+
+}
+
+void TIM3_Init()
+{
+ TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+ RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+ 
+  //TIM_DeInit(TIM3);
+  //TIM_InternalClockConfig(TIM3);
+  //TIM_TimeBaseStructure.TIM_Period=(TIM_CLK/2000)-1;
+ // TIM_TimeBaseStructure.TIM_Prescaler=1999;
+  //TIM_TimeBaseStructure.TIM_CounterMode=TIM_CounterMode_Up; //向上计数模式 
+ 
+  TIM_TimeBaseStructure.TIM_Period =(TIM_CLK/2000)-1;
+  TIM_TimeBaseStructure.TIM_Prescaler = 1999;
+  TIM_TimeBaseStructure.TIM_ClockDivision = 0x0;
+  TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+  
+  TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
+  TIM_SetAutoreload(TIM3, ((TIM_CLK/2000)-1)); 
+   
+ //TIM_OCInitTypeDef TIMOCInitStructure;
+ //TIMOCInitStructure.TIM_OCMode = TIM_OCMode_Timing; //PWM输出比较模式
+ //TIMOCInitStructure.TIM_Pulse =(u32)((TIM_CLK/(3000))-1);//占空比=(CCRx/ARR)*100%
+ //TIMOCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;//TIM输出比较极性高
+ //TIMOCInitStructure.TIM_OutputState = TIM_OutputState_Enable;//使能输出状态
+ // TIM_OC1Init(TIM3, &TIMOCInitStructure);//TIM3的CH1输出
+ 
+ TIM_ITConfig(TIM3,TIM_IT_Update, ENABLE); // 打开捕获比较中断 TIM_IT_Update 
+
+ TIM_Cmd(TIM3, ENABLE); //开启时钟
+}
+
+void TIM2_Init()
+{
+  TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+ 
+
+  TIM_TimeBaseStructure.TIM_Period =(TIM_CLK/200000)-1;
+  TIM_TimeBaseStructure.TIM_Prescaler = 1999;
+  TIM_TimeBaseStructure.TIM_ClockDivision = 0x0;
+  TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+  
+  TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure);
+  TIM_SetAutoreload(TIM2, ((TIM_CLK/200000)-1)); 
+   
+
+ 
+ TIM_ITConfig(TIM2,TIM_IT_Update, ENABLE); // 打开捕获比较中断 TIM_IT_Update 
+
+ TIM_Cmd(TIM2, ENABLE); //开启时钟
+}
+
+
+void Init_Exit(void)
+{
+  EXTI_InitTypeDef EXTI_InitStructure;	//外部中断线
+	
+  /* Connect Button EXTI Line to Button GPIO Pin */
+  SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOB, EXTI_PinSource5);	
+  EXTI_ClearITPendingBit(EXTI_Line5);
+  /* Configure Button EXTI line */
+  EXTI_InitStructure.EXTI_Line = EXTI_Line5;	//外部线路EXIT0
+  EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;			//设外外部中断模式:EXTI线路为中断请求  EXTI_Mode_Event ;//设置 EXTI线路为事件请求 
+  EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;  //外部中断触发沿选择:设置输入线路下降沿为中断请求
+  EXTI_InitStructure.EXTI_LineCmd = ENABLE;		//使能外部中断新状态
+  EXTI_Init(&EXTI_InitStructure);		//根据EXTI_InitStruct中指定的参数初始化外设EXTI寄存器              
+}
+
+
+void Init_I2C(void)
+{
+  I2C_InitTypeDef I2C_InitStructure;
+  
+  RCC_I2CCLKConfig(RCC_I2C1CLK_SYSCLK);
+  
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE);
+  
+  I2C_InitStructure.I2C_Mode = I2C_Mode_I2C;
+  I2C_InitStructure.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
+  I2C_InitStructure.I2C_AnalogFilter = I2C_AnalogFilter_Enable;
+  I2C_InitStructure.I2C_DigitalFilter = 0x00;
+  I2C_InitStructure.I2C_OwnAddress1 = 0x00;
+  I2C_InitStructure.I2C_Ack = I2C_Ack_Enable;
+  I2C_InitStructure.I2C_Timing = 0x10950C27;//  0x40B22536  0x10950C27
+  I2C_Init(I2C1,&I2C_InitStructure);
+  
+  I2C_Cmd(I2C1, ENABLE);
+}
+void Leddisp(u8 tempvalue,u8 state)
+{
+  switch(tempvalue)
+  {
+  case HEAT_TEMP60:   LED_Buff[2]=state?0xDF:0x1f;break;
+  case HEAT_TEMP70:   LED_Buff[3]=state?0xDF:0x1f;break;
+  case HEAT_TEMP80:   LED_Buff[0]=state?0xDF:0x1f;break;
+  case HEAT_TEMP90:   LED_Buff[5]=state?0xDF:0x1f;break;
+  case HEAT_TEMP100:  LED_Buff[4]=state?0xDF:0x1f;break;
+  case WARM_KEY:      LED_Buff[1]=state?0xDF:0x1f;break;
+  case WIFI_KEY:      LED_Buff[6]=state?0xDF:0x1f;break;
+  case All_LIGHT_ON:  memset(LED_Buff,0xDF,8);break;
+  case ALL_LIGHT_OFF: memset(LED_Buff,0x1f,8);break;
+  case SIX_LIGHT_ON:  memset(LED_Buff,0xDF,6);break;
+  case SIX_LIGHT_OFF: memset(LED_Buff,0x1F,6);break;
+  default: break;
+  } 
+  delay(20);//需要改小
+  EXTI->IMR &= ~EXTI_Line5;
+  EXTI->EMR &= ~EXTI_Line5;
+  while(GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_5)==1);  
+  while(I2C1_Write_NBytes(IQS333_ADDR, PWM_DUTY, 8, &LED_Buff[0])!=0);  
+  EXTI->IMR |= EXTI_Line5;
+  EXTI->EMR |= EXTI_Line5;
+  
+}
+
+/*u8 TempAdjust(u8 temp)
+{
+  switch(temp)
+  {
+  case HEAT_TEMP60:   return(54);
+  case HEAT_TEMP70:   return(65);
+  case HEAT_TEMP80:   return(76);
+  case HEAT_TEMP90:   return(86);
+  case HEAT_TEMP100:  return(98);
+  default:  return(temp-5);
+  }
+}
+
+
+u8 TempAdjust(u8 temp)
+{
+  if(temp>=98)
+    return (temp);
+  else if(temp<50)
+    return (temp-10+4*WaterWeight/10);
+  else
+  {
+    return (temp - (160-temp)/10 + 2*WaterWeight/10);//-11
+  } 
+}*/
+
+u8 ObjVref(u8 tempobj)
+{
+  if(WaterWeight>=5 && WaterWeight<=15)
+  {
+    if(tempobj<=60)
+      return (tempobj-(120-tempobj)/10+TableObj[WaterWeight]);
+    else if(tempobj<=70)
+      return (tempobj-(130-tempobj)/10+TableObj[WaterWeight]);
+    else if(tempobj<=90)
+      return (tempobj-(140-tempobj)/10+TableObj[WaterWeight]);
+      //return (tempobj-1);
+    else if(tempobj<98)
+      return (tempobj-1);
+    else
+      return (98);
+  }
+  else if(WaterWeight>15)
+  {
+    if(tempobj<=90)
+      return (tempobj-2);
+    else if(tempobj<98)
+      return (tempobj-1);
+    else
+      return (98);
+  }
+  else
+  {
+    return 0;
+  }
+}
+
+u8 TempRef(u8 tempnow)
+{
+  u8 RealTemp=0;
+  u8 n=0;
+  u16 vref=0;
+  if(Mystate==1 || Mystate==2)
+  {
+    n=2*WaterWeight;
+    if(StateTime<(n/2))
+    {
+      RealTemp=tempnow;
+    }
+    else if(StateTime<n)
+    {
+      if(tempnow<30)
+        vref=0;
+      else if(tempnow<90)
+        vref=(2*(n-StateTime)*Table_L[WaterWeight]/n);
+      else
+        vref=(2*(n-StateTime)*Table_H[WaterWeight]/n);
+      
+      switch(WaterWeight)
+      {
+        case 5:    RealTemp=TempTable5[tempnow]-vref; break;
+        case 6:    RealTemp=TempTable6[tempnow]-vref; break;
+        case 7:    RealTemp=TempTable7[tempnow]-vref; break;
+        case 8:    RealTemp=TempTable8[tempnow]-vref; break;
+        case 9:    RealTemp=TempTable9[tempnow]-vref; break;
+        case 10:   RealTemp=TempTable10[tempnow]-vref; break;
+        case 11:   RealTemp=TempTable10[tempnow]-vref; break;
+        case 12:   RealTemp=TempTable12[tempnow]-vref; break;
+        case 13:   RealTemp=TempTable12[tempnow]-vref; break;
+        case 14:   RealTemp=TempTable14[tempnow]-vref; break;
+        case 15:   RealTemp=TempTable14[tempnow]-vref; break;
+        case 16:   RealTemp=TempTable16[tempnow]-vref; break;
+        case 17:   RealTemp=TempTable16[tempnow]-vref; break;
+        default:   RealTemp=tempnow;break;                   
+      }
+    }
+    else if(StateTime>=n) // >=n
+    {
+      switch(WaterWeight)
+      {
+        case 5:    RealTemp=TempTable5[tempnow]; break;
+        case 6:    RealTemp=TempTable6[tempnow]; break;
+        case 7:    RealTemp=TempTable7[tempnow]; break;
+        case 8:    RealTemp=TempTable8[tempnow]; break;
+        case 9:    RealTemp=TempTable9[tempnow]; break;
+        case 10:   RealTemp=TempTable10[tempnow]; break;
+        case 11:   RealTemp=TempTable10[tempnow]; break;
+        case 12:   RealTemp=TempTable12[tempnow]; break;
+        case 13:   RealTemp=TempTable12[tempnow]; break;
+        case 14:   RealTemp=TempTable14[tempnow]; break;
+        case 15:   RealTemp=TempTable14[tempnow]; break;
+        case 16:   RealTemp=TempTable16[tempnow]; break;
+        case 17:   RealTemp=TempTable16[tempnow]; break;
+        default:   RealTemp=tempnow;break;                   
+      }
+    }
+  }
+  else
+  {
+    RealTemp=tempnow;
+  }  
+  return (RealTemp);
+}
+
+/* ---------------------------------------------------- */
+/* 1、conver ADC to the water temp、WaterWeight         */
+/* ---------------------------------------------------- */
+void ADConverData(void)
+{
+    u8 i;
+    
+    if(adcok==1)
+    {
+      adcok=0;
+      //WaterTemp=0;
+      for(i=0;i<126;i++)
+      {
+        if(Temperature<Temp_Table[i])
+        {
+          if(i>0)
+            wtmp=i-1;
+          else
+            wtmp=0;
+          break;
+        }
+      }
+      if(Heat==1)
+      {
+        if(wtmp>wtmppre)
+        {
+          wtmppre=wtmp;
+          WaterTemp=wtmp;
+        }
+      }
+      else
+      {
+        WaterTemp=wtmp;
+        wtmppre=wtmp;
+      }          
+      for(i=0;i<50;i++)
+      {
+        if(Weight<Weight_Table[i])
+        {
+          CWaterWeight=i;
+          break;
+        }
+      }
+      if(Temperature>TEAPOT_HUB)
+        TeaPotHub=1;
+      else
+      {
+        TeaPotHub=0;
+        Rst_Value();
+        WARM_LIGHT(0);
+        Leddisp(WARM_KEY,0);/*2015-11-29*/
+      }
+      if(TeaPotHub!=Pre_TeaPotHub || FirstPowerOn==1)
+      {
+        Pre_TeaPotHub=TeaPotHub;
+        if(TeaPotHub==0)
+        {
+          if(FirstPowerOn==1)
+          {
+            FirstPowerOn=0;
+            DelayN10ms(350);
+          }
+          WaterWeight=0;
+          if(Connect_Service==0)
+            DataReturn(5);
+          else
+          {
+            DelayN10ms(120);
+            DataReturn(3);
+            bFlagOK=0;
+            DelayNum10ms=200;
+            while(bFlagOK==0)
+            {
+              if(DelayNum10ms==0)
+                break;
+            }
+            DelayNum10ms=0;
+            bFlagOK=0;
+          }
+        }
+        else
+        {
+          FirstPowerOn=0;
+          TimeSendHubState=TIME_SEND_HUB_STATE;
+        }        
+      }
+    }   
+}
+
+/* ---------------------------------------------------- */
+/* 2、Heating the water when enable heat & teapot is hub*/
+/*    Through Keyboard operation                        */
+/* ---------------------------------------------------- */
+void Heat_Offline(void)
+{
+    if((CheckTime==1) && (TeaPotHub==1) && (Keycontrol==1))
+    {
+      CheckTime=0;      
+      if(Heat==1)                     /* (2.1)、Heat */
+      {
+        RELAY(1);
+        RelayOn=1;
+        Mystate=1;
+        WaterTemp=TempRef(wtmppre);
+        wtmp2=WaterTemp;
+        if(WaterTemp>=(ObjVref(Warmtemp)))
+        {
+           Heat=0;
+           RELAY(0);
+           RelayOn=0;
+           HeatCRC=1;
+           HeatCRCStart=0;
+           HeatCRCTime=HEAT_CRC_TIME;
+           FirstCRC=1;
+           Warmheat=0;
+           if(Warm==1)
+           {
+             WarmTime=KEEP_WARM_TIME;
+             WarmEnable=1;
+           }
+           else
+           {
+             //Warmtemp=0;
+             WarmEnable=0;
+           }
+           if(Warmtemp==100)
+           {
+                Speak(1);
+                Finish=1;
+                FinishTime=0;
+                
+                if(Connect_Service==0)
+                {
+                  DataReturn(4);
+                }
+                Mystate=0;
+                StateTime=0;/**/
+                //RecordTable[RecordNum].endtime=;
+                LastTime[0]=0x32;
+                LastTime[1]=0x30;
+                LastTime[2]=0x30 + TYear/10;
+                LastTime[3]=0x30 + TYear%10;
+                LastTime[4]=0x30 + TMon/10;
+                LastTime[5]=0x30 + TMon%10;
+                LastTime[6]=0x30 + TDay/10;
+                LastTime[7]=0x30 + TDay%10;
+                LastTime[8]=RecordTable[RecordNum].endtime[0]=THour/10 + 0x30;
+                LastTime[9]=RecordTable[RecordNum].endtime[1]=THour%10 + 0x30;
+                LastTime[10]=RecordTable[RecordNum].endtime[2]=TMin/10 + 0x30;
+                LastTime[11]=RecordTable[RecordNum].endtime[3]=TMin%10 + 0x30;
+                LastTime[12]=RecordTable[RecordNum].endtime[4]=TSec/10 + 0x30;
+                LastTime[13]=RecordTable[RecordNum].endtime[5]=TSec%10 + 0x30;
+                LastTime[14]=RecordTable[RecordNum].endtime[6]=0;
+                RecordTable[RecordNum].energy=((RelayOnTime/100)*TEAPOTPOWER)/3600;
+                RecordNum++;
+                if(RecordNum>10)
+                  RecordNum=9;               
+              
+                if(Connect_Service==0)
+                  DataReturn(5);
+                else
+                {
+                  //memset(CommRcvBuf,0,512);
+                  DataReturn(3);
+                  bFlagOK=0;
+                  DelayNum10ms=200;
+                  while(bFlagOK==0)
+                  {
+                    if(DelayNum10ms==0)
+                      break;
+                  }
+                  DelayNum10ms=0;
+                  if(bFlagOK==1)
+                  {
+                    bFlagOK=0;
+                    OffLineTime=OFF_LINE_TIME;
+                  }
+                  else  //第二次
+                  {                    
+                    //memset(CommRcvBuf,0,512);
+                    bFlagOK=0;
+                    DataReturn(3);
+                    //bFlagOK=0;
+                    DelayNum10ms=200;
+                    while(bFlagOK==0)
+                    {
+                      if(DelayNum10ms==0)
+                        break;
+                    }
+                    DelayNum10ms=0;
+                    if(bFlagOK==1)
+                    {
+                      bFlagOK=0;
+                      OffLineTime=OFF_LINE_TIME;
+                    }
+                  }
+                }                 
+                Keycontrol=0;
+                Leddisp(Warmtemp,1); //light on 30S
+                LightHeatOffTime=LIGHT_HEAT_OFF_TIME;
+                Warmtemp=0;
+                HeatCRC=0;
+                FirstCRC=0;
+                //memset(PhoneID,0,37);
+                memcpy(PhoneID,manual,37);
+           }
+        }        
+      }
+      
+      else if(HeatCRC==1)  /* (2.2)、after shut dowm heat 15S ,judged the water temp*/
+      {        
+        if(HeatCRCStart==1)
+        {                    
+          if(WaterTemp<(Warmtemp-3))     // water temp <=Warmtemp-1
+          {
+            RELAY(1);
+            RelayOn=1;
+          }          
+          if(WaterTemp>=(Warmtemp-3))
+          {
+            RELAY(0);
+            RelayOn=0;
+            HeatCRCStart=0;
+            HeatCRC=0;
+            WaterTemp=Warmtemp;
+            Leddisp(Warmtemp,1);
+            if(Warm==0)
+            {
+              Speak(1);
+              Finish=1;
+              FinishTime=0;
+              
+              if(Connect_Service==0)
+              {
+                DataReturn(4);
+              }
+                Mystate=0;
+                StateTime=0;/**/
+                //RecordTable[RecordNum].endtime=;
+                LastTime[0]=0x32;
+                LastTime[1]=0x30;
+                LastTime[2]=0x30 + TYear/10;
+                LastTime[3]=0x30 + TYear%10;
+                LastTime[4]=0x30 + TMon/10;
+                LastTime[5]=0x30 + TMon%10;
+                LastTime[6]=0x30 + TDay/10;
+                LastTime[7]=0x30 + TDay%10;
+                LastTime[8]=RecordTable[RecordNum].endtime[0]=THour/10 + 0x30;
+                LastTime[9]=RecordTable[RecordNum].endtime[1]=THour%10 + 0x30;
+                LastTime[10]=RecordTable[RecordNum].endtime[2]=TMin/10 + 0x30;
+                LastTime[11]=RecordTable[RecordNum].endtime[3]=TMin%10 + 0x30;
+                LastTime[12]=RecordTable[RecordNum].endtime[4]=TSec/10 + 0x30;
+                LastTime[13]=RecordTable[RecordNum].endtime[5]=TSec%10 + 0x30;
+                LastTime[14]=RecordTable[RecordNum].endtime[6]=0;
+                RecordTable[RecordNum].energy=((RelayOnTime/100)*TEAPOTPOWER)/3600;
+                RecordNum++;
+                if(RecordNum>10)
+                  RecordNum=9;               
+              
+                if(Connect_Service==0)
+                  DataReturn(5);
+                else
+                {
+                  //memset(CommRcvBuf,0,512);
+                  DataReturn(3);
+                  bFlagOK=0;
+                  DelayNum10ms=200;
+                  while(bFlagOK==0)
+                  {
+                    if(DelayNum10ms==0)
+                      break;
+                  }
+                  DelayNum10ms=0;
+                  if(bFlagOK==1)
+                  {
+                    bFlagOK=0;
+                    OffLineTime=OFF_LINE_TIME;
+                  }
+                  else  //第二次
+                  {                    
+                    //memset(CommRcvBuf,0,512);
+                    bFlagOK=0;
+                    DataReturn(3);
+                    //bFlagOK=0;
+                    DelayNum10ms=200;
+                    while(bFlagOK==0)
+                    {
+                      if(DelayNum10ms==0)
+                        break;
+                    }
+                    DelayNum10ms=0;
+                    if(bFlagOK==1)
+                    {
+                      bFlagOK=0;
+                      OffLineTime=OFF_LINE_TIME;
+                    }
+                  }
+                }                 
+                Keycontrol=0;
+                Leddisp(Warmtemp,1); //light on 30S
+                LightHeatOffTime=LIGHT_HEAT_OFF_TIME;
+                Warmtemp=0;
+                //memset(PhoneID,0,37);
+                memcpy(PhoneID,manual,37);               
+            }
+          } 
+          FirstCRC=0;
+         }
+        if(WaterTemp>=Warmtemp)
+          WaterTemp=Warmtemp;
+        else if((Warmtemp-WaterTemp)>2)
+          WaterTemp=Warmtemp-2;
+        else
+          WaterTemp=Warmtemp-1;       
+      }
+      else if((Warm==1) && (WarmEnable==1))    /* (2.3)、keep warm */
+      {
+        Mystate=3;
+        
+        if(Warmheat==1)
+        {
+          RELAY(1);
+          RelayOn=1;
+          if(WaterTemp>=(Warmtemp-2))
+          {
+            RELAY(0);
+            RelayOn=0;
+            Warmheat=0;
+          }
+        }
+        else
+        {
+          if(WaterTemp<(Warmtemp-3))
+          {
+            RELAY(1);
+            RelayOn=1;
+            Warmheat=1;
+          }
+        }
+        
+        if(WaterTemp<Warmtemp-1)
+          WaterTemp=Warmtemp-1;
+        else if(WaterTemp>Warmtemp+1)
+          WaterTemp=Warmtemp+1;
+        
+        if(WarmOK==1)
+        {          
+                Speak(1);
+                Finish=1;
+                FinishTime=0;
+              
+                if(Connect_Service==0)
+                  DataReturn(4);          
+                Rst_Value();
+                WARM_LIGHT(0);
+                Leddisp(WARM_KEY,0);/*2015-11-29*/
+          
+                //RecordTable[RecordNum].endtime=;
+                LastTime[0]=0x32;
+                LastTime[1]=0x30;
+                LastTime[2]=0x30 + TYear/10;
+                LastTime[3]=0x30 + TYear%10;
+                LastTime[4]=0x30 + TMon/10;
+                LastTime[5]=0x30 + TMon%10;
+                LastTime[6]=0x30 + TDay/10;
+                LastTime[7]=0x30 + TDay%10;
+                LastTime[8]=RecordTable[RecordNum].endtime[0]=THour/10 + 0x30;
+                LastTime[9]=RecordTable[RecordNum].endtime[1]=THour%10 + 0x30;
+                LastTime[10]=RecordTable[RecordNum].endtime[2]=TMin/10 + 0x30;
+                LastTime[11]=RecordTable[RecordNum].endtime[3]=TMin%10 + 0x30;
+                LastTime[12]=RecordTable[RecordNum].endtime[4]=TSec/10 + 0x30;
+                LastTime[13]=RecordTable[RecordNum].endtime[5]=TSec%10 + 0x30;
+                LastTime[14]=RecordTable[RecordNum].endtime[6]=0;
+                RecordTable[RecordNum].energy=((RelayOnTime/100)*TEAPOTPOWER)/3600;
+                RecordNum++;
+                if(RecordNum>10)
+                  RecordNum=9;
+                
+                if(Connect_Service==0)
+                    DataReturn(5);
+                else
+                {
+                  //memset(CommRcvBuf,0,512);
+                  DataReturn(3);
+                  bFlagOK=0;
+                  DelayNum10ms=200;
+                  while(bFlagOK==0)
+                  {
+                    if(DelayNum10ms==0)
+                      break;
+                  }
+                  DelayNum10ms=0;
+                  if(bFlagOK==1)
+                  {
+                    bFlagOK=0;
+                    OffLineTime=OFF_LINE_TIME;
+                  }
+                  else  //第二次
+                  {
+                    //memset(CommRcvBuf,0,512);
+                    bFlagOK=0;
+                    DataReturn(3);
+                    //bFlagOK=0;
+                    DelayNum10ms=200;
+                    while(bFlagOK==0)
+                    {
+                      if(DelayNum10ms==0)
+                        break;
+                    }
+                    DelayNum10ms=0;
+                    if(bFlagOK==1)
+                    {
+                      bFlagOK=0;
+                      OffLineTime=OFF_LINE_TIME;
+                    }
+                  }
+                }  
+                //memset(PhoneID,0,37);
+                memcpy(PhoneID,manual,37);
+        }        
+      }
+
+      SendTime++;
+      if((SendTime>=20) && (Keycontrol>0))
+      {
+        SendTime=0;
+        DataReturn(3);
+      }
+    }
+}
+ 
+
+/* ---------------------------------------------------- */
+/* 3、Heating the water when enable heat & teapot is hub*/
+/*    Through Wifi Telecontrol                          */
+/* ---------------------------------------------------- */
+void Heat_Online(void)
+{
+    if((CheckTime==1) && (TeaPotHub==1) && (Telecontrol==1))
+    {
+      CheckTime=0;
+            
+      if(Heat==1)                     /* (3.1)、Heat */
+      {
+        RELAY(1);
+        RelayOn=1;
+        Mystate=1; 
+        
+        if(Purify>0)                    /* 净化 */
+        {
+          WaterTemp=TempRef(wtmppre);
+          if(WaterTemp>=BOIL_TEMP)
+          {
+            WaterTemp=100;
+            Mystate=2;
+            //StateTime=0;
+            Pure_Time--;
+            if(Pure_Time==0)
+            {
+              RELAY(0);
+              RelayOn=0;
+              Heat=0;
+              Purify=0;
+              Boil=0;
+              Warmheat=0;
+              HeatCRC=0;
+              StateTime=0; /**/             
+              if(Warm==1)
+              {
+                WarmTime=TeleWarmTime*60+HEAT_CRC_TIME;
+                WarmEnable=1;
+                EnCool=1;
+                Leddisp(HEAT_TEMP100,1); //light on 30S
+                //LightHeatOffTime=LIGHT_HEAT_OFF_TIME;
+              }
+              else
+              {
+                Leddisp(HEAT_TEMP100,1); 
+                EnCool=1;  
+              }
+            }
+          }
+        }        
+        else if(Boil>0)              /* 烧开 */
+        {
+          WaterTemp=TempRef(wtmppre);
+          if(WaterTemp>=BOIL_TEMP)
+          {
+              WaterTemp=100;
+              RELAY(0);
+              RelayOn=0;
+              Heat=0;
+              Purify=0;
+              Boil=0;
+              Warmheat=0;
+              HeatCRC=0;
+              StateTime=0;/**/
+              if(Warm==1)
+              {
+                WarmTime=TeleWarmTime*60+HEAT_CRC_TIME;
+                WarmEnable=1;
+                EnCool=1;
+                Leddisp(HEAT_TEMP100,1); //light on 30S
+                //LightHeatOffTime=LIGHT_HEAT_OFF_TIME;
+              }
+              else
+              {
+                Leddisp(HEAT_TEMP100,1); 
+                EnCool=1;                 
+              }            
+          }
+        }
+        
+        else 
+        {
+          WaterTemp=TempRef(wtmppre);
+          if(WaterTemp>=(ObjVref(Warmtemp))) /* 不净化 */
+          {
+           Heat=0;
+           RELAY(0);
+           RelayOn=0;
+           HeatCRC=1;
+           HeatCRCStart=0;
+           HeatCRCTime=HEAT_CRC_TIME;
+           FirstCRC=1;
+           Warmheat=0;
+
+           if(Warm==1)
+           {
+             WarmTime=TeleWarmTime*60+HEAT_CRC_TIME;
+             WarmEnable=1;
+           }
+           else
+           {
+             WarmEnable=0;
+             StateTime=0;
+           }
+          }
+        }        
+      }
+      
+      else if(HeatCRC==1)  /* (3.2)、after shut dowm heat 15S ,judged the water temp*/
+      {
+        if(HeatCRCStart==1)
+        {           
+          if(WaterTemp<(Warmtemp-3))     // water temp <=Warmtemp-1
+          {
+            RELAY(1);
+            RelayOn=1;
+          }          
+          if(WaterTemp>=(Warmtemp-3))
+          {
+            RELAY(0);
+            RelayOn=0;
+            HeatCRCStart=0;
+            HeatCRC=0;
+            WarmTime=TeleWarmTime*60;
+            WaterTemp=Warmtemp;
+            StateTime=0;/**/
+            Leddisp(HEAT_TEMP100,1); 
+            if(Warm==0)
+            {
+              Speak(1);
+              Finish=1;
+              FinishTime=0;
+              
+              if(Connect_Service==0)
+              {
+                DataReturn(4);
+              }
+              Mystate=0;
+              StateTime=0;
+              
+              //RecordTable[RecordNum].endtime=;
+              LastTime[0]=0x32;
+              LastTime[1]=0x30;
+              LastTime[2]=0x30 + TYear/10;
+              LastTime[3]=0x30 + TYear%10;
+              LastTime[4]=0x30 + TMon/10;
+              LastTime[5]=0x30 + TMon%10;
+              LastTime[6]=0x30 + TDay/10;
+              LastTime[7]=0x30 + TDay%10;
+              LastTime[8]=RecordTable[RecordNum].endtime[0]=THour/10 + 0x30;
+              LastTime[9]=RecordTable[RecordNum].endtime[1]=THour%10 + 0x30;
+              LastTime[10]=RecordTable[RecordNum].endtime[2]=TMin/10 + 0x30;
+              LastTime[11]=RecordTable[RecordNum].endtime[3]=TMin%10 + 0x30;
+              LastTime[12]=RecordTable[RecordNum].endtime[4]=TSec/10 + 0x30;
+              LastTime[13]=RecordTable[RecordNum].endtime[5]=TSec%10 + 0x30;
+              LastTime[14]=RecordTable[RecordNum].endtime[6]=0;
+              RecordTable[RecordNum].energy=((RelayOnTime/100)*TEAPOTPOWER)/3600;
+              RecordNum++;
+              if(RecordNum>10)
+                RecordNum=9;
+                
+              if(Connect_Service==0)
+                DataReturn(5);
+              else
+              {
+                
+                  DataReturn(3);
+                  bFlagOK=0;
+                  DelayNum10ms=200;
+                  while(bFlagOK==0)
+                  {
+                    if(DelayNum10ms==0)
+                      break;
+                  }
+                  DelayNum10ms=0;
+                  if(bFlagOK==1)
+                  {
+                    bFlagOK=0;
+                    OffLineTime=OFF_LINE_TIME;
+                  }
+                  else   // 第二次
+                  {
+                    bFlagOK=0;
+                    DataReturn(3);
+                    //bFlagOK=0;
+                    DelayNum10ms=200;
+                    while(bFlagOK==0)
+                    {
+                      if(DelayNum10ms==0)
+                        break;
+                    }
+                    DelayNum10ms=0;
+                    if(bFlagOK==1)
+                    {
+                      bFlagOK=0;
+                      OffLineTime=OFF_LINE_TIME;
+                    }
+                  }                  
+              }
+              
+              Telecontrol=0;
+              Leddisp(HEAT_TEMP100,1); //light on 30S
+              LightHeatOffTime=LIGHT_HEAT_OFF_TIME;
+              Warmtemp=0;
+              //memset(PhoneID,0,37); 
+              memcpy(PhoneID,manual,37);
+            }
+          } 
+          FirstCRC=0;
+         }        
+        if(WaterTemp>=Warmtemp)
+          WaterTemp=Warmtemp;
+        else if((Warmtemp-WaterTemp)>2)
+          WaterTemp=Warmtemp-2;
+        else
+          WaterTemp=Warmtemp-1;        
+      }
+            
+      else if(EnCool==1)  /*冷却*/
+      {
+        Mystate=4;
+        if(Warm==1)
+          WarmTime=TeleWarmTime*60;      
+        
+        if(WaterTemp<=Warmtemp)
+        {
+          EnCool=0;   
+          if(Warm==0)
+          {
+                Speak(1);
+                Finish=1;
+                FinishTime=0;
+              
+                if(Connect_Service==0)
+                  DataReturn(4);
+                Mystate=0;
+                StateTime=0;
+                
+                //RecordTable[RecordNum].endtime=;
+                  LastTime[0]=0x32;
+                  LastTime[1]=0x30;
+                  LastTime[2]=0x30 + TYear/10;
+                  LastTime[3]=0x30 + TYear%10;
+                  LastTime[4]=0x30 + TMon/10;
+                  LastTime[5]=0x30 + TMon%10;
+                  LastTime[6]=0x30 + TDay/10;
+                  LastTime[7]=0x30 + TDay%10;
+                  LastTime[8]=RecordTable[RecordNum].endtime[0]=THour/10 + 0x30;
+                  LastTime[9]=RecordTable[RecordNum].endtime[1]=THour%10 + 0x30;
+                  LastTime[10]=RecordTable[RecordNum].endtime[2]=TMin/10 + 0x30;
+                  LastTime[11]=RecordTable[RecordNum].endtime[3]=TMin%10 + 0x30;
+                  LastTime[12]=RecordTable[RecordNum].endtime[4]=TSec/10 + 0x30;
+                  LastTime[13]=RecordTable[RecordNum].endtime[5]=TSec%10 + 0x30;
+                  LastTime[14]=RecordTable[RecordNum].endtime[6]=0;
+                  RecordTable[RecordNum].energy=((RelayOnTime/100)*TEAPOTPOWER)/3600;
+                  
+                  RecordNum++;
+                  if(RecordNum>10)
+                    RecordNum=9;
+                  
+                if(Connect_Service==0)
+                  DataReturn(5);
+                else
+                {
+                  DataReturn(3);
+                  bFlagOK=0;
+                  DelayNum10ms=200;
+                  while(bFlagOK==0)
+                  {
+                    if(DelayNum10ms==0)
+                      break;
+                  }
+                  DelayNum10ms=0;
+                  if(bFlagOK==1)
+                  {
+                    bFlagOK=0;
+                    OffLineTime=OFF_LINE_TIME;
+                  }
+                  else   // 第二次
+                  {
+                    bFlagOK=0;
+                    DataReturn(3);
+                    //bFlagOK=0;
+                    DelayNum10ms=200;
+                    while(bFlagOK==0)
+                    {
+                      if(DelayNum10ms==0)
+                        break;
+                    }
+                    DelayNum10ms=0;
+                    if(bFlagOK==1)
+                    {
+                      bFlagOK=0;
+                      OffLineTime=OFF_LINE_TIME;
+                    }
+                  }                  
+                }
+
+                Warmtemp=0;
+                WarmEnable=0;
+                Telecontrol=0;                
+                Leddisp(HEAT_TEMP100,1);   /* 需要确认 亮哪个灯？ */
+                LightHeatOffTime=LIGHT_HEAT_OFF_TIME;
+                //memset(PhoneID,0,37);
+                memcpy(PhoneID,manual,37);                
+          }
+        }
+      }
+      
+      else if((Warm==1) && (WarmEnable==1))    /* (3.3)、keep warm */
+      {
+        Mystate=3;
+        //DataReturn(3);
+        //Leddisp(HEAT_TEMP100,1);   //light on 30Min
+        if(Warmheat==1)
+        {
+          RELAY(1);
+          RelayOn=1;
+          if(WaterTemp>=(Warmtemp-2))
+          {
+            RELAY(0);
+            RelayOn=0;
+            Warmheat=0;
+          }
+        }
+        else
+        {
+          if(WaterTemp<(Warmtemp-3))
+          {
+            RELAY(1);
+            RelayOn=1;
+            Warmheat=1;
+          }
+        }        
+        if(WaterTemp<Warmtemp-1)
+          WaterTemp=Warmtemp-1;
+        else if(WaterTemp>Warmtemp+1)
+          WaterTemp=Warmtemp+1;        
+        if(WarmOK==1)
+        {
+          
+          Speak(1);
+          Finish=1;
+          FinishTime=0;              
+          if(Connect_Service==0)
+            DataReturn(4);          
+          Rst_Value();
+          WARM_LIGHT(0);   
+          Leddisp(WARM_KEY,0);/*2015-11-29*/
+           //RecordTable[RecordNum].endtime=;
+                LastTime[0]=0x32;
+                LastTime[1]=0x30;
+                LastTime[2]=0x30 + TYear/10;
+                LastTime[3]=0x30 + TYear%10;
+                LastTime[4]=0x30 + TMon/10;
+                LastTime[5]=0x30 + TMon%10;
+                LastTime[6]=0x30 + TDay/10;
+                LastTime[7]=0x30 + TDay%10;
+                LastTime[8]=RecordTable[RecordNum].endtime[0]=THour/10 + 0x30;
+                LastTime[9]=RecordTable[RecordNum].endtime[1]=THour%10 + 0x30;
+                LastTime[10]=RecordTable[RecordNum].endtime[2]=TMin/10 + 0x30;
+                LastTime[11]=RecordTable[RecordNum].endtime[3]=TMin%10 + 0x30;
+                LastTime[12]=RecordTable[RecordNum].endtime[4]=TSec/10 + 0x30;
+                LastTime[13]=RecordTable[RecordNum].endtime[5]=TSec%10 + 0x30;
+                LastTime[14]=RecordTable[RecordNum].endtime[6]=0;
+                RecordTable[RecordNum].energy=((RelayOnTime/100)*TEAPOTPOWER)/3600;
+                RecordNum++;
+                if(RecordNum>10)
+                  RecordNum=9;
+                
+          if(Connect_Service==0)
+              DataReturn(5);
+          else
+          {
+                DataReturn(3);
+                bFlagOK=0;
+                DelayNum10ms=200;
+                while(bFlagOK==0)
+                {
+                  if(DelayNum10ms==0)
+                    break;
+                }
+                DelayNum10ms=0;
+                if(bFlagOK==1)
+                {
+                  bFlagOK=0;
+                  OffLineTime=OFF_LINE_TIME;
+                } 
+                else   // 第二次
+                {
+                    bFlagOK=0;
+                    DataReturn(3);
+                    // bFlagOK=0;
+                    DelayNum10ms=200;
+                    while(bFlagOK==0)
+                    {
+                      if(DelayNum10ms==0)
+                        break;
+                    }
+                    DelayNum10ms=0;
+                    if(bFlagOK==1)
+                    {
+                      bFlagOK=0;
+                      OffLineTime=OFF_LINE_TIME;
+                    }
+                }
+          }
+          //memset(PhoneID,0,37);
+          memcpy(PhoneID,manual,37);
+        }        
+      }      
+      SendTime++;
+      if((SendTime>=20) && (Telecontrol>0))
+      {
+        SendTime=0;
+        DataReturn(3);
+        if(Connect_Service==1)
+          DelayN10ms(10);
+      }
+    }
+}
+
+
+/*----------------------------------------------------------------------------*/
+/*连上服务器时操作------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
+u8 Tel_scan(void)
+{
+      u8 i;
+      u8 Tel_orderid[17];
+      u8 Tel_appid[37];
+      u8 Tel_temp;
+      u8 Tel_boil;
+      u8 Tel_purify;
+      u8 Tel_keepwarm;
+      u8 Tel_orderhour;
+      u8 Tel_ordermin;
+      u8 Tel_ordersec;
+      u8 Tel_week;
+      u8 Tel_action;
+      u8 tmp[40];
+      u8 len;
+      u8 heatjusttime=0;
+            
+      if(RecordNum>0)             /* 1、send  heat record 发送加热记录*/
+      {
+        DelayN10ms(100);
+        memset(CommRcvBuf,0,512);
+        DataReturn(2);        
+        bFlagOK=0;
+        DelayNum10ms=200;
+        while(bFlagOK==0)
+        {
+          if(DelayNum10ms==0)
+            break;
+        }
+        DelayNum10ms=0;
+        if(bFlagOK==1 && CommRcvBuf[11]=='1')
+        {
+          OffLineTime=OFF_LINE_TIME;
+          memmove(&RecordTable[0].operation,&RecordTable[1].operation,sizeof(HeatRecord)*(9));
+          memset(&RecordTable[9].operation,0,sizeof(HeatRecord));
+          RecordNum--;
+          OffLineTime=OFF_LINE_TIME;
+          bFlagOK=0;
+        }       
+      }       
+      if(Read_Requst==1)           /* 3、向服务器获取请求*/
+      {
+        Read_Requst=0;
+        memset(CommRcvBuf,0,512);
+        bFlagOK=0;
+        DataReturn(4);        
+        DelayNum10ms=200;     
+        while(bFlagOK==0)
+        {
+          if(DelayNum10ms==0)
+            break;
+        }
+        DelayNum10ms=0;
+        if(bFlagOK==1 && CommRcvBuf[11]=='1')     
+        {         
+          OffLineTime=OFF_LINE_TIME;
+          bFlagOK=0;
+          
+          //apponlineflag
+          get_telparmer(tmp,"apponlineflag",CommRcvBuf,'"');  //apponlineflag
+          if(tmp[0]=='1')
+            App_OnLine=1;
+          else
+            App_OnLine=0;
+          
+          if(CommRcvBuf[23]>='1' && CommRcvBuf[23]<='9')     /* 3.1、有任务*/
+          {
+            App_OnLine=1;            
+            get_telparmer(tmp,"orderid",CommRcvBuf,'"');  //Tel_orderid
+            memset(Tel_orderid,0,sizeof(Tel_orderid));
+            if(strlen(tmp)!=16)
+              return 1;
+            strncat(Tel_orderid,tmp,16);
+            memset(Orderid,0,sizeof(Orderid));
+            strncat(Orderid,Tel_orderid,16);
+            
+            get_telparmer(tmp,"appid",CommRcvBuf,'"');  //Tel_appid
+            if(!(strlen(tmp)==36 || strlen(tmp)==16))
+              return 1;
+            memset(Tel_appid,0,sizeof(Tel_appid));
+            strncat(Tel_appid,tmp,36);
+            
+            get_telparmer(tmp,"temp",CommRcvBuf,'"');  //Tel_temp
+            len=strlen(tmp);
+            if(len==4)
+              Tel_temp=(tmp[0]-0x30)*100 + (tmp[1]-0x30)*10 + (tmp[2]-0x30);
+            else if(len==3)
+              Tel_temp=(tmp[0]-0x30)*10 + (tmp[1]-0x30) ;
+            else if(len==2)
+              Tel_temp=(tmp[0]-0x30);
+            else if(len==0)
+              return 1;
+            
+            get_telparmer(tmp,"boil",CommRcvBuf,'"');   //Tel_boil
+            Tel_boil=tmp[0]-0x30;
+            
+            get_telparmer(tmp,"purify",CommRcvBuf,'"');  //Tel_purify
+            len=strlen(tmp);
+            if(len==2)
+              Tel_purify= (tmp[0]-0x30)*10 + (tmp[1]-0x30);
+            else if(len==1)
+              Tel_purify= (tmp[0]-0x30);
+            
+            get_telparmer(tmp,"keepwarm",CommRcvBuf,'"');  //Tel_keepwarm
+            len=strlen(tmp);
+            if(len==2)
+              Tel_keepwarm= (tmp[0]-0x30)*10 + (tmp[1]-0x30);
+            else if(len==1)
+              Tel_keepwarm= (tmp[0]-0x30);
+            
+            get_telparmer(tmp,"heattime",CommRcvBuf,'"');  //Tel_heattime
+            len=strlen(tmp);
+              if((len==1) && (tmp[0]==0x30))
+              {
+                heatjusttime=1;
+              }
+              else if(len==6)
+              {
+                Tel_orderhour=(tmp[0]-0x30)*10 + (tmp[1]-0x30);
+                Tel_ordermin =(tmp[2]-0x30)*10 + (tmp[3]-0x30);
+                Tel_ordersec =(tmp[4]-0x30)*10 + (tmp[5]-0x30);                
+              }
+              
+             get_telparmer(tmp,"week",CommRcvBuf,'"');  //Tel_week
+             Tel_week=0;
+             Tel_week=Tel_week|((tmp[0]-0x30));
+             Tel_week=Tel_week|((tmp[1]-0x30)<<1);
+             Tel_week=Tel_week|((tmp[2]-0x30)<<2);
+             Tel_week=Tel_week|((tmp[3]-0x30)<<3);
+             Tel_week=Tel_week|((tmp[4]-0x30)<<4);
+             Tel_week=Tel_week|((tmp[5]-0x30)<<5);
+             Tel_week=Tel_week|((tmp[6]-0x30)<<6);
+             
+             get_telparmer(tmp,"action",CommRcvBuf,'"');  //Tel_action
+             if((strncmp (tmp, "heat", 4))==0)
+               Tel_action=1;
+             else
+               Tel_action=0;
+             
+             if(heatjusttime==1)    /* 3.1.1、即时相关*/
+             {
+               heatjusttime=0;
+               if(Tel_action==1)    /*3.1.1.1即时加热*/
+               {       
+                 if((WaterWeight>=5) && (WaterWeight<=20) && (TeaPotHub==1) && (Keycontrol==0) && (Telecontrol==0))
+                 {
+                  Rst_Value();
+                  WARM_LIGHT(0);
+                  Telecontrol=1;
+                  RelayOnTime=0;
+                  Heat=1;
+                  Boil=Tel_boil;
+                  Purify=Tel_purify; 
+                  Pure_Time=Tel_purify*5*60;
+                  TeleWarmTime=Tel_keepwarm; 
+                  Warmtemp=Tel_temp;
+                  
+                  memset(PhoneID,0,sizeof(PhoneID));
+                  strncat(PhoneID,Tel_appid,36);        
+                  if(Tel_keepwarm>0)
+                  {
+                    Warm=1;
+                    //LIGHT2(1);
+                    WARM_LIGHT(1);
+                  }
+                  Leddisp(HEAT_TEMP100,1);/*2015-11-29*/
+                  
+                  RecordTable[RecordNum].operation=1;
+                  RecordTable[RecordNum].starttime[0]=THour/10 + 0x30;
+                  RecordTable[RecordNum].starttime[1]=THour%10 + 0x30;
+                  RecordTable[RecordNum].starttime[2]=TMin/10 + 0x30;
+                  RecordTable[RecordNum].starttime[3]=TMin%10 + 0x30;
+                  RecordTable[RecordNum].starttime[4]=TSec/10 + 0x30;
+                  RecordTable[RecordNum].starttime[5]=TSec%10 + 0x30;
+                  RecordTable[RecordNum].starttime[6]=0;
+                  RecordTable[RecordNum].level=WaterWeight;
+                  RecordTable[RecordNum].temp=Tel_temp;
+                  RecordTable[RecordNum].boil=Tel_boil;
+                  RecordTable[RecordNum].purify=Tel_purify;
+                  RecordTable[RecordNum].keepwarm=Tel_keepwarm;  
+                  
+                  memset(RecordTable[RecordNum].PhoneID,0,37);
+                  strcat(RecordTable[RecordNum].PhoneID,Tel_appid);
+                  
+                  StateTime=0;
+                  Mystate=1;
+                  //StateTime=0;
+                  DelayN10ms(50);
+                  bFlagOK=0;
+                  //memset(CommRcvBuf,0,512);
+                  DataReturn(3);
+                  
+                  DelayNum10ms=200;
+                  while(bFlagOK==0)
+                  {
+                    if(DelayNum10ms==0)
+                      break;
+                  }
+                  DelayNum10ms=0;
+                  if(bFlagOK==1)
+                  {
+                    OffLineTime=OFF_LINE_TIME;
+                    bFlagOK=0;
+                  }                 
+                  
+                  DelayN10ms(50);
+                  bFlagOK=0;
+                  //memset(CommRcvBuf,0,512);
+                  DataReturn(5);
+                  
+                  DelayNum10ms=200;
+                  while(bFlagOK==0)
+                  {
+                    if(DelayNum10ms==0)
+                      break;
+                  }
+                  DelayNum10ms=0;
+                  if(bFlagOK==1)
+                  {
+                    OffLineTime=OFF_LINE_TIME;
+                    bFlagOK=0;
+                  }
+                  else   // 第二次
+                  {
+                    bFlagOK=0;
+                    //memset(CommRcvBuf,0,512);
+                    DataReturn(5);                  
+                    DelayNum10ms=200;
+                    while(bFlagOK==0)
+                    {
+                      if(DelayNum10ms==0)
+                        break;
+                    }
+                    DelayNum10ms=0;
+                    if(bFlagOK==1)
+                    {
+                      OffLineTime=OFF_LINE_TIME;
+                      bFlagOK=0;
+                    }
+                  }
+                  
+                }
+                else  //  不满足及时加热条件，返回
+                {
+                  DelayN10ms(50);
+                  bFlagOK=0;
+                  //memset(CommRcvBuf,0,512);
+                  DataReturn(5);
+                  
+                  DelayNum10ms=200;
+                  while(bFlagOK==0)
+                  {
+                    if(DelayNum10ms==0)
+                      break;
+                  }
+                  DelayNum10ms=0;
+                  if(bFlagOK==1)
+                  {
+                    OffLineTime=OFF_LINE_TIME;
+                    bFlagOK=0;
+                  }
+                  else   // 第二次
+                  {
+                    bFlagOK=0;
+                    //memset(CommRcvBuf,0,512);
+                    DataReturn(5);                  
+                    DelayNum10ms=200;
+                    while(bFlagOK==0)
+                    {
+                      if(DelayNum10ms==0)
+                        break;
+                    }
+                    DelayNum10ms=0;
+                    if(bFlagOK==1)
+                    {
+                      OffLineTime=OFF_LINE_TIME;
+                      bFlagOK=0;
+                    }
+                  }
+                  
+                }
+               }
+               
+               else     /* 3.1.1.2、取消正在加热的操作*/
+               {
+                 if((Telecontrol==1) || (Keycontrol==1))
+                 {
+                  Speak(1);
+                  Finish=1;
+                  FinishTime=0;                                   
+              
+                  LastTime[0]=0x32;
+                  LastTime[1]=0x30;
+                  LastTime[2]=0x30 + TYear/10;
+                  LastTime[3]=0x30 + TYear%10;
+                  LastTime[4]=0x30 + TMon/10;
+                  LastTime[5]=0x30 + TMon%10;
+                  LastTime[6]=0x30 + TDay/10;
+                  LastTime[7]=0x30 + TDay%10;
+                  LastTime[8]=RecordTable[RecordNum].endtime[0]=THour/10 + 0x30;
+                  LastTime[9]=RecordTable[RecordNum].endtime[1]=THour%10 + 0x30;
+                  LastTime[10]=RecordTable[RecordNum].endtime[2]=TMin/10 + 0x30;
+                  LastTime[11]=RecordTable[RecordNum].endtime[3]=TMin%10 + 0x30;
+                  LastTime[12]=RecordTable[RecordNum].endtime[4]=TSec/10 + 0x30;
+                  LastTime[13]=RecordTable[RecordNum].endtime[5]=TSec%10 + 0x30;
+                  LastTime[14]=RecordTable[RecordNum].endtime[6]=0;
+                  RecordTable[RecordNum].energy=((RelayOnTime/100)*TEAPOTPOWER)/3600;
+                  
+                  RecordNum++;
+                  if(RecordNum>10)
+                    RecordNum=9;
+                  
+                  Rst_Value();
+                  WARM_LIGHT(0); 
+                  Leddisp(WARM_KEY,0);/*2015-11-29*/
+                  
+                  DelayN10ms(50);
+                  bFlagOK=0;
+                  //memset(CommRcvBuf,0,512);
+                  DataReturn(3);
+                  //bFlagOK=0;
+                  DelayNum10ms=200;
+                  while(bFlagOK==0)
+                  {
+                    if(DelayNum10ms==0)
+                      break;
+                  }
+                  DelayNum10ms=0;
+                  if(bFlagOK==1)
+                  {
+                    bFlagOK=0;
+                    OffLineTime=OFF_LINE_TIME;
+                  }
+                  else  //第二次
+                  {
+                    bFlagOK=0;
+                    DataReturn(3);
+                    //bFlagOK=0;
+                    DelayNum10ms=200;
+                    while(bFlagOK==0)
+                    {
+                      if(DelayNum10ms==0)
+                        break;
+                    }
+                    DelayNum10ms=0;
+                    if(bFlagOK==1)
+                    {
+                      bFlagOK=0;
+                      OffLineTime=OFF_LINE_TIME;
+                    }
+                  }
+                  //memset(PhoneID,0,37);
+                  memcpy(PhoneID,manual,37);
+                  
+                  DelayN10ms(50);
+                  bFlagOK=0;
+                  //memset(CommRcvBuf,0,512);
+                  DataReturn(6);                  
+                  DelayNum10ms=200;
+                  while(bFlagOK==0)
+                  {
+                    if(DelayNum10ms==0)
+                      break;
+                  }
+                  DelayNum10ms=0;
+                  if(bFlagOK==1)
+                  {
+                    OffLineTime=OFF_LINE_TIME;
+                    bFlagOK=0;
+                  }
+                  else  // 第二次
+                  {
+                    bFlagOK=0;
+                    DataReturn(6);                  
+                    DelayNum10ms=200;
+                    while(bFlagOK==0)
+                    {
+                      if(DelayNum10ms==0)
+                        break;
+                    }
+                    DelayNum10ms=0;
+                    if(bFlagOK==1)
+                    {
+                      OffLineTime=OFF_LINE_TIME;
+                      bFlagOK=0;
+                    }
+                  }
+                }
+                
+                else  // 没有在加热
+                {
+                  DelayN10ms(50);
+                  bFlagOK=0;
+                  //memset(CommRcvBuf,0,512);
+                  DataReturn(6);                  
+                  DelayNum10ms=200;
+                  while(bFlagOK==0)
+                  {
+                    if(DelayNum10ms==0)
+                      break;
+                  }
+                  DelayNum10ms=0;
+                  if(bFlagOK==1)
+                  {
+                    OffLineTime=OFF_LINE_TIME;
+                    bFlagOK=0;
+                  }
+                  else  // 第二次
+                  {
+                    bFlagOK=0;
+                    DataReturn(6);                  
+                    DelayNum10ms=200;
+                    while(bFlagOK==0)
+                    {
+                      if(DelayNum10ms==0)
+                        break;
+                    }
+                    DelayNum10ms=0;
+                    if(bFlagOK==1)
+                    {
+                      OffLineTime=OFF_LINE_TIME;
+                      bFlagOK=0;
+                    }
+                  }
+                }
+                  
+               }
+             }
+             else                    /*3.1.2、预约相关*/
+             {
+               if(Tel_action==1)    /* 3.1.2.1增加预约*/
+               {
+                if(Ordernum>16)
+                  Ordernum=0;
+                 //存入buffer
+                for(i=0;i<16;i++)
+                {
+                  if(strncmp(OrderTable[i].OrderID,Tel_orderid,16)==0)
+                    break;
+                }
+                if(i>=16)
+                {
+                  OrderTable[Ordernum].Warmtemp=Tel_temp;
+                  OrderTable[Ordernum].Boil=Tel_boil;
+                  OrderTable[Ordernum].Purify=Tel_purify;
+                  OrderTable[Ordernum].WarmTime=Tel_keepwarm;
+                  OrderTable[Ordernum].OrderHour=Tel_orderhour;
+                  OrderTable[Ordernum].OrderMin=Tel_ordermin;
+                  OrderTable[Ordernum].OrderSec=Tel_ordersec;
+                  OrderTable[Ordernum].OrderWeek=Tel_week;
+                  strncat(OrderTable[Ordernum].OrderID,Tel_orderid,16);
+                  strncat(OrderTable[Ordernum].PhoneID,Tel_appid,36);             
+                  Ordernum++;
+                  if(Ordernum>16)
+                  {
+                    Ordernum=15;
+                    memmove(&OrderTable[0].Warmtemp,&OrderTable[1].Warmtemp,sizeof(HeatInfo)*(15));
+                    memset(&OrderTable[15].Warmtemp,0,sizeof(HeatInfo));
+                  }
+                  write_flash(ORDER_START_ADDR,(u16 *)OrderTable,992);
+                }
+                
+                ////////
+                DelayN10ms(50);
+                bFlagOK=0;
+                //memset(CommRcvBuf,0,512);
+                DataReturn(5);
+                DelayNum10ms=200;
+                while(bFlagOK==0)
+                {
+                  if(DelayNum10ms==0)
+                    break;
+                }
+                DelayNum10ms=0;
+                if(bFlagOK==1)
+                {
+                    OffLineTime=OFF_LINE_TIME;
+                    bFlagOK=0;
+                }
+                else  // 第二次
+                {
+                  bFlagOK=0;
+                  DataReturn(5);
+                  DelayNum10ms=200;
+                  while(bFlagOK==0)
+                  {
+                    if(DelayNum10ms==0)
+                      break;
+                  }
+                  DelayNum10ms=0;
+                  if(bFlagOK==1)
+                  {
+                      OffLineTime=OFF_LINE_TIME;
+                      bFlagOK=0;
+                  }
+                }                
+               }
+               else                 /* 3.1.2.2、取消预约*/
+               {
+                 //删除buffer
+                for(i=0;i<16;i++)
+                {
+                  if(strcmp(OrderTable[i].OrderID,Tel_orderid)==0)
+                  {
+                    memset(&OrderTable[i].Warmtemp,0,sizeof(HeatInfo));
+                    memmove(&OrderTable[i].Warmtemp,&OrderTable[i+1].Warmtemp,sizeof(HeatInfo)*(15-i));
+                    memset(&OrderTable[15].Warmtemp,0,sizeof(HeatInfo));
+                    if(Ordernum>0)
+                      Ordernum--;
+                    write_flash(ORDER_START_ADDR,(u16 *)OrderTable,992);
+                    break;
+                  }
+                }      
+                ////////
+                DelayN10ms(50);
+                bFlagOK=0;
+                //memset(CommRcvBuf,0,512);
+                DataReturn(6);
+                
+                DelayNum10ms=200;
+                while(bFlagOK==0)
+                {
+                  if(DelayNum10ms==0)
+                    break;
+                }
+                DelayNum10ms=0;
+                if(bFlagOK==1)
+                {
+                    OffLineTime=OFF_LINE_TIME;
+                    bFlagOK=0;
+                }
+                else
+                {
+                   bFlagOK=0;
+                   //memset(CommRcvBuf,0,512);
+                   DataReturn(6);
+                
+                   DelayNum10ms=200;
+                   while(bFlagOK==0)
+                   {
+                     if(DelayNum10ms==0)
+                       break;
+                   } 
+                   DelayNum10ms=0;
+                   if(bFlagOK==1)
+                   {
+                      OffLineTime=OFF_LINE_TIME;
+                      bFlagOK=0;
+                   }     
+                 }
+               }
+             }                          
+            //qushu             
+          }          
+        } 
+      }
+      return 0;
+}
+
+void CheckOrder(void)
+{
+  u8 i;
+  
+  if(Telecontrol==0 && Keycontrol==0)
+  {
+    for(i=0;i<Ordernum;i++)
+    {
+      if((OrderTable[i].OrderWeek&(0x01<<TWeek)) || OrderTable[i].OrderWeek==0x00)
+      {
+        if((OrderTable[i].OrderHour==THour) && (OrderTable[i].OrderMin==TMin) && (OrderTable[i].OrderSec==TSec))
+        {
+          if((WaterWeight>=5) && (WaterWeight<=20) && (TeaPotHub==1))
+          {                  
+                  Rst_Value();
+                  WARM_LIGHT(0);
+                  Telecontrol=1;
+                  RelayOnTime=0;
+                  Heat=1;
+                  Boil=OrderTable[i].Boil;
+                  Purify=OrderTable[i].Purify; 
+                  Pure_Time=Purify*5*60;
+                  TeleWarmTime=OrderTable[i].WarmTime; 
+                  Warmtemp=OrderTable[i].Warmtemp;
+                  
+                  memset(PhoneID,0,sizeof(PhoneID));
+                  strncat(PhoneID,OrderTable[i].PhoneID,36);
+                  
+                  memset(Orderid,0,sizeof(Orderid));
+                  strncat(Orderid,OrderTable[i].OrderID,16);
+                  
+                  OrderOperState=1;
+                  
+                  if(TeleWarmTime>0)
+                  {
+                    Warm=1;
+                    WARM_LIGHT(1);
+                    //LIGHT2(1);
+                  }
+                  Leddisp(HEAT_TEMP100,1);/*2015-11-29*/
+                  
+                  RecordTable[RecordNum].operation=2;
+                  RecordTable[RecordNum].starttime[0]=THour/10 + 0x30;
+                  RecordTable[RecordNum].starttime[1]=THour%10 + 0x30;
+                  RecordTable[RecordNum].starttime[2]=TMin/10 + 0x30;
+                  RecordTable[RecordNum].starttime[3]=TMin%10 + 0x30;
+                  RecordTable[RecordNum].starttime[4]=TSec/10 + 0x30;
+                  RecordTable[RecordNum].starttime[5]=TSec%10 + 0x30;
+                  RecordTable[RecordNum].starttime[6]=0;
+                  RecordTable[RecordNum].level=WaterWeight;
+                  RecordTable[RecordNum].temp=Warmtemp;
+                  RecordTable[RecordNum].boil=Boil;
+                  RecordTable[RecordNum].purify=Purify;
+                  RecordTable[RecordNum].keepwarm=OrderTable[i].WarmTime;
+                  
+                  StateTime=0;
+                  Mystate=1;                  
+                  
+                  DelayN10ms(20);
+                  //memset(CommRcvBuf,0,512);
+                  DataReturn(3);
+                  if(Connect_Service==1)
+                  {
+                    bFlagOK=0;
+                    DelayNum10ms=200;
+                    while(bFlagOK==0)
+                    {
+                      if(DelayNum10ms==0)
+                        break;
+                    }
+                    DelayNum10ms=0;
+                    if(bFlagOK==1)
+                    {
+                      OffLineTime=OFF_LINE_TIME;
+                      bFlagOK=0;
+                    }                    
+
+                    DelayN10ms(50);
+                    bFlagOK=0;
+                    DataReturn(7);
+                    DelayNum10ms=200;
+                    while(bFlagOK==0)
+                    {
+                      if(DelayNum10ms==0)
+                        break;
+                    }
+                    DelayNum10ms=0;
+                    if(bFlagOK==1)
+                    {
+                      OffLineTime=OFF_LINE_TIME;
+                      bFlagOK=0;
+                    }                    
+                  }                  
+          }
+          else    // 不符合加热条件，预约未开始
+          {
+            OrderOperState=3;            
+            memset(Orderid,0,sizeof(Orderid));
+            strcat(Orderid,OrderTable[i].OrderID);            
+            memset(PhoneID,0,sizeof(PhoneID));
+            strcat(PhoneID,OrderTable[i].PhoneID);            
+            if(Connect_Service==1)
+            {
+               DelayN10ms(50);
+               bFlagOK=0;
+               DataReturn(7);
+               DelayNum10ms=200;
+               while(bFlagOK==0)
+               {
+                  if(DelayNum10ms==0)
+                    break;
+               }
+               DelayNum10ms=0;
+               if(bFlagOK==1)
+               {
+                 OffLineTime=OFF_LINE_TIME;
+                 bFlagOK=0;
+               }              
+            }
+            memcpy(PhoneID,manual,37);
+            OrderOperState=0;            
+          }
+          
+          
+          if(OrderTable[i].OrderWeek==0x00)
+          {
+            memset(&OrderTable[i].Warmtemp,0,sizeof(HeatInfo));
+            memmove(&OrderTable[i].Warmtemp,&OrderTable[i+1].Warmtemp,sizeof(HeatInfo)*(15-i));
+            memset(&OrderTable[15].Warmtemp,0,sizeof(HeatInfo));
+            if(Ordernum>0)
+              Ordernum--;
+            write_flash(ORDER_START_ADDR,(u16 *)OrderTable,992);
+          }                  
+        }
+      }
+    }
+  }
+}
+
+static int get_parmer(unsigned char *str,unsigned char *name,unsigned char *context,unsigned char chr)
+{
+	int cnt=0;
+	unsigned char *parm;
+	while(*context){
+		if((*(context-1)!=chr)&&(*(context-1)!='?')){
+			context++;
+			continue;
+		}
+		if((memcmp(context,name,strlen((const char *)name))==0)&&
+			(*(context+strlen((const char *)name))=='=')){//名字匹配而且以‘=’开始参数
+			parm=context+strlen((const char *)name)+1;//"name=
+			context+=(strlen((const char *)name)+1);
+			while((*context!=chr)&&(*context!='\0')&&(*context!='\r')){// &,回车，标示参数结束
+				cnt++;
+				context++;
+			}
+			memcpy(str,parm,cnt);//copy parm to str
+			*(str+cnt)='\0';
+			return 0;
+		}
+		else
+			context++;	
+	}
+	return -1;//cann't find the parm
+}
+
+
+
+static int get_telparmer(unsigned char *str,unsigned char *name,unsigned char *context,unsigned char chr)
+{
+	int cnt=0;
+	unsigned char *parm;
+	while(*context){
+		if((*(context-1)!=chr)&&(*(context-1)!='?')){
+			context++;
+			continue;
+		}
+		if((memcmp(context,name,strlen((const char *)name))==0)&&
+			(*(context+strlen((const char *)name))=='"')){//名字匹配而且以‘"’开始参数
+                          parm=context+strlen((const char *)name)+3;//"name":"
+			context+=(strlen((const char *)name)+3);
+			while(*context!=chr){// 标示参数结束
+				cnt++;
+				context++;
+			}
+			memcpy(str,parm,cnt);//copy parm to str
+			*(str+cnt)='\0';
+			return 0;
+		}
+		else
+			context++;	
+	}
+	return -1;//cann't find the parm
+}
+/* ---------------------------------------------------- */
+/*  Uart3 receve data process                           */
+/* ---------------------------------------------------- */
+void CommProc3(void)
+{
+  u8  tmp[64];
+  u8  len,i;
+  u8  heatjusttime=0;
+  u8  Rcv_Warmtemp;
+  u8  Rcv_Boil;
+  u8  Rcv_Purify;
+  u8  Rcv_WarmTime;
+  u8  Rcv_OrderHour;
+  u8  Rcv_OrderMin;
+  u8  Rcv_OrderSec;
+  u8  Rcv_OrderWeek;
+  u8  Rcv_OrderEnable;
+  u8  Rcv_OrderID[17];
+  u8  Rcv_PhoneID[64];
+  
+  if((bFlagOK==1) && (Connect_Service==0))   //LAN
+  {
+    switch(CommRcvBuf[7]-0x30)
+    {
+    case 1:   get_parmer(tmp,"TEMP",CommRcvBuf,'&');     //temp
+              len=strlen(tmp);
+              if(len==4)
+                Rcv_Warmtemp=(tmp[0]-0x30)*100 + (tmp[1]-0x30)*10 + (tmp[2]-0x30);
+              else if(len==3)
+                Rcv_Warmtemp=(tmp[0]-0x30)*10 + (tmp[1]-0x30) ;
+              else if(len==2)
+                Rcv_Warmtemp=(tmp[0]-0x30);
+              
+              get_parmer(tmp,"BOIL",CommRcvBuf,'&');    //biol
+              Rcv_Boil=tmp[0]-0x30;
+              
+              get_parmer(tmp,"PURIFY",CommRcvBuf,'&');  //Purify
+              len=strlen(tmp);
+              if(len==2)
+                Rcv_Purify= (tmp[0]-0x30)*10 + (tmp[1]-0x30);
+              else if(len==1)
+                Rcv_Purify= (tmp[0]-0x30);
+              
+              get_parmer(tmp,"KEEPWARM",CommRcvBuf,'&');  //KeepWarm
+              len=strlen(tmp);
+              if(len==2)
+                Rcv_WarmTime= (tmp[0]-0x30)*10 + (tmp[1]-0x30);
+              else if(len==1)
+                Rcv_WarmTime= (tmp[0]-0x30);
+              
+              get_parmer(tmp,"HEATTIME",CommRcvBuf,'&');  //HEATTIME
+              len=strlen(tmp);
+              if((len==1) && (tmp[0]==0x30))
+              { 
+                heatjusttime=1;
+              }
+              else if(len==6)
+              {
+                Rcv_OrderHour=(tmp[0]-0x30)*10 + (tmp[1]-0x30);
+                Rcv_OrderMin =(tmp[2]-0x30)*10 + (tmp[3]-0x30);
+                Rcv_OrderSec =(tmp[4]-0x30)*10 + (tmp[5]-0x30);                
+              }
+              
+              get_parmer(tmp,"WEEK",CommRcvBuf,'&');  //WEEK
+              Rcv_OrderWeek=0;
+              Rcv_OrderWeek=Rcv_OrderWeek|((tmp[0]-0x30));
+              Rcv_OrderWeek=Rcv_OrderWeek|((tmp[1]-0x30)<<1);
+              Rcv_OrderWeek=Rcv_OrderWeek|((tmp[2]-0x30)<<2);
+              Rcv_OrderWeek=Rcv_OrderWeek|((tmp[3]-0x30)<<3);
+              Rcv_OrderWeek=Rcv_OrderWeek|((tmp[4]-0x30)<<4);
+              Rcv_OrderWeek=Rcv_OrderWeek|((tmp[5]-0x30)<<5);
+              Rcv_OrderWeek=Rcv_OrderWeek|((tmp[6]-0x30)<<6);
+              
+              get_parmer(tmp,"ENABLE",CommRcvBuf,'&');  //ENABLE
+              Rcv_OrderEnable=tmp[0]-0x30;
+              
+              get_parmer(tmp,"ORDERID",CommRcvBuf,'&');  //ORDERID
+              memset(Rcv_OrderID,0,sizeof(Rcv_OrderID));
+              strcat(Rcv_OrderID,tmp);
+              
+              get_parmer(tmp,"ID",CommRcvBuf,'&');  //phone ID
+              memset(Rcv_PhoneID,0,sizeof(Rcv_PhoneID));
+              strcat(Rcv_PhoneID,tmp); 
+              
+              if(heatjusttime==1)
+              {
+                heatjusttime=0;
+                
+                if((WaterWeight>=5) && (WaterWeight<=20) && (TeaPotHub==1))
+                {
+                  Rst_Value();
+                  WARM_LIGHT(0);
+                  Telecontrol=1;  
+                  RelayOnTime=0;
+                  Heat=1;
+                  Boil=Rcv_Boil;
+                  Purify=Rcv_Purify; 
+                  Pure_Time=Purify*2*60;
+                  TeleWarmTime=Rcv_WarmTime; 
+                  Warmtemp=Rcv_Warmtemp;
+
+                  RecordTable[RecordNum].operation=1;
+                  RecordTable[RecordNum].starttime[0]=THour/10 + 0x30;
+                  RecordTable[RecordNum].starttime[1]=THour%10 + 0x30;
+                  RecordTable[RecordNum].starttime[2]=TMin/10 + 0x30;
+                  RecordTable[RecordNum].starttime[3]=TMin%10 + 0x30;
+                  RecordTable[RecordNum].starttime[4]=TSec/10 + 0x30;
+                  RecordTable[RecordNum].starttime[5]=TSec%10 + 0x30;
+                  RecordTable[RecordNum].starttime[6]=0;
+                  RecordTable[RecordNum].level=WaterWeight;
+                  RecordTable[RecordNum].temp=Rcv_Warmtemp;
+                  RecordTable[RecordNum].boil=Rcv_Boil;
+                  RecordTable[RecordNum].purify=Rcv_Purify;
+                  RecordTable[RecordNum].keepwarm=Rcv_WarmTime;
+                  
+                  memset(RecordTable[RecordNum].PhoneID,0,37);
+                  strcat(RecordTable[RecordNum].PhoneID,Rcv_PhoneID);             
+                  
+                  
+                  memset(PhoneID,0,sizeof(PhoneID));
+                  strcat(PhoneID,Rcv_PhoneID);        
+                  if(Rcv_WarmTime>0)
+                  {
+                    Warm=1;
+                    //LIGHT2(1);
+                    WARM_LIGHT(1);
+                  }
+                  Leddisp(HEAT_TEMP100,1);/*2015-11-29*/
+                  StateTime=0;
+                  Mystate=1;
+                  //StateTime=0;
+                  DataReturn(3);
+                }
+                
+              }
+              else if(Rcv_OrderEnable==1)
+              {
+                //存入buffer
+                if(Ordernum>16)
+                  Ordernum=0;
+                 //存入buffer
+                for(i=0;i<16;i++)
+                {
+                  if(strncmp(OrderTable[i].OrderID,Rcv_OrderID,16)==0)
+                    break;
+                }
+                if(i>=16)
+                {
+                  OrderTable[Ordernum].Warmtemp=Rcv_Warmtemp;
+                  OrderTable[Ordernum].Boil=Rcv_Boil;
+                  OrderTable[Ordernum].Purify=Rcv_Purify;
+                  OrderTable[Ordernum].WarmTime=Rcv_WarmTime;
+                  OrderTable[Ordernum].OrderHour=Rcv_OrderHour;
+                  OrderTable[Ordernum].OrderMin=Rcv_OrderMin;
+                  OrderTable[Ordernum].OrderSec=Rcv_OrderSec;
+                  OrderTable[Ordernum].OrderWeek=Rcv_OrderWeek;
+                  strcat(OrderTable[Ordernum].OrderID,Rcv_OrderID);
+                  strcat(OrderTable[Ordernum].PhoneID,Rcv_PhoneID);             
+                  Ordernum++;
+                  if(Ordernum>16)
+                  {
+                    Ordernum=15;
+                    memmove(&OrderTable[0].Warmtemp,&OrderTable[1].Warmtemp,sizeof(HeatInfo)*(15));
+                    memset(&OrderTable[15].Warmtemp,0,sizeof(HeatInfo));
+                  }
+                  write_flash(ORDER_START_ADDR,(u16 *)OrderTable,992);
+                }                
+                DataReturn(1);                
+              }
+              else if(Rcv_OrderEnable==0)
+              {
+                //删除buffer
+                for(i=0;i<16;i++)
+                {
+                  if(strcmp(OrderTable[i].OrderID,Rcv_OrderID)==0)
+                  {
+                    memset(&OrderTable[i].Warmtemp,0,sizeof(HeatInfo));
+                    memmove(&OrderTable[i].Warmtemp,&OrderTable[i+1].Warmtemp,sizeof(HeatInfo)*(15-i));
+                    memset(&OrderTable[15].Warmtemp,0,sizeof(HeatInfo));
+                    if(Ordernum>0)
+                      Ordernum--;
+                    write_flash(ORDER_START_ADDR,(u16 *)OrderTable,992);
+                    break;
+                  }
+                }                
+                DataReturn(2);
+              }             
+              break;         
+            
+    case 2:  get_parmer(tmp,"GET_HEAT_STATE&ID",CommRcvBuf,'&');     //PhoneID
+              memset(Rcv_PhoneID,0,sizeof(Rcv_PhoneID));
+              strcat(Rcv_PhoneID,tmp); 
+              
+              memset(tmp,0,sizeof(tmp));
+              strcat(tmp,PhoneID); 
+              
+              memset(PhoneID,0,sizeof(PhoneID));
+              strcat(PhoneID,Rcv_PhoneID);  
+              DataReturn(5);
+              DelayN10ms(20);
+              DataReturn(5);
+              DelayN10ms(20);
+              DataReturn(5);
+              
+              memset(PhoneID,0,sizeof(PhoneID));
+              strcat(PhoneID,tmp); 
+              
+              if(FactorSign>0)
+              {
+                memset(tmp,0,sizeof(tmp));
+                if((write_flash(FACTOR_START_ADDR,(u16 *)tmp,2))==0)
+                  FactorSign=0; 
+                WifiLedCtl(0);
+                Leddisp(WIFI_KEY,1);/*2015-11-29*/
+                //set_mode(1);
+                Connect_Service=1;
+                OffLineTime=OFF_LINE_TIME;                
+                
+                DelayN10ms(500);
+                
+                for(i=0;i<BOND_TRY_TIME;i++)
+                {
+                  bFlagOK=0;
+                  DataReturn(1);
+                  DelayNum10ms=300;                
+                  while(bFlagOK==0)
+                  {
+                    if(DelayNum10ms==0)
+                      break;
+                  }
+                  DelayNum10ms=0;                
+                  if(bFlagOK==1)
+                  {
+                    bFlagOK=0; 
+                    DelayN10ms(100);
+                    /* Return state */
+                    DataReturn(3);
+                    bFlagOK=0;
+                    DelayNum10ms=200;                
+                    while(bFlagOK==0)
+                    {
+                      if(DelayNum10ms==0)
+                        break;
+                    }
+                    DelayNum10ms=0; 
+                    bFlagOK=0; 
+                    OffLineTime=OFF_LINE_TIME;
+                    break;
+                  }
+                }                      
+              }
+              break;    
+              
+    case 3:   
+              Speak(1);
+              Finish=1;
+              FinishTime=0;
+              
+              LastTime[0]=0x32;
+              LastTime[1]=0x30;
+              LastTime[2]=0x30 + TYear/10;
+              LastTime[3]=0x30 + TYear%10;
+              LastTime[4]=0x30 + TMon/10;
+              LastTime[5]=0x30 + TMon%10;
+              LastTime[6]=0x30 + TDay/10;
+              LastTime[7]=0x30 + TDay%10;
+              LastTime[8]=RecordTable[RecordNum].endtime[0]=THour/10 + 0x30;
+              LastTime[9]=RecordTable[RecordNum].endtime[1]=THour%10 + 0x30;
+              LastTime[10]=RecordTable[RecordNum].endtime[2]=TMin/10 + 0x30;
+              LastTime[11]=RecordTable[RecordNum].endtime[3]=TMin%10 + 0x30;
+              LastTime[12]=RecordTable[RecordNum].endtime[4]=TSec/10 + 0x30;
+              LastTime[13]=RecordTable[RecordNum].endtime[5]=TSec%10 + 0x30;
+              LastTime[14]=RecordTable[RecordNum].endtime[6]=0;
+              RecordTable[RecordNum].energy=((RelayOnTime/100)*TEAPOTPOWER)/3600;
+              RecordNum++;
+              if(RecordNum>10)
+                RecordNum=9; 
+              DataReturn(6);
+              Rst_Value();
+              WARM_LIGHT(0);
+              Leddisp(WARM_KEY,0);/*2015-11-29*/
+              DataReturn(4);
+              DataReturn(5);              
+              break;
+              
+    case 4:  get_parmer(tmp,"BEIJINGTIME",CommRcvBuf,'&');     //BEIJINGTIME
+              //set time;
+              //RTC_ITConfig(RTC_IT_SEC, DISABLE);
+              TWeek=(tmp[1]-0x30);
+              TYear=(tmp[2]-0x30)*10+(tmp[3]-0x30);
+              TMon =(tmp[4]-0x30)*10+(tmp[5]-0x30);
+              TDay =(tmp[6]-0x30)*10+(tmp[7]-0x30);
+              THour=(tmp[8]-0x30)*10+(tmp[9]-0x30);
+              TMin =(tmp[10]-0x30)*10+(tmp[11]-0x30);
+              TSec =(tmp[12]-0x30)*10+(tmp[13]-0x30);
+              
+              //RTC_WaitForLastTask();
+              //RTC_SetCounter(count);
+              //RTC_WaitForLastTask();               
+              
+              //RTC_ITConfig(RTC_IT_SEC, ENABLE);
+              break;
+              
+    case 5:  get_parmer(tmp,"MODE",CommRcvBuf,'&'); 
+              if(tmp[0]=='0')
+              {
+                DataReturn(8);  
+                TryConnectWanTime=CONNECT_WAN_TIME;
+              }
+              else if(tmp[0]=='1')
+              {
+                DataReturn(8); 
+                OffLineTime=OFF_LINE_TIME;
+                Connect_Service=1;
+              }
+      
+    default: 
+              break;      
+      
+    }
+    
+    bFlagOK=0;
+  }
+  
+  else if((bFlagOK==1) && (Connect_Service==1))   // Connect_Service
+  {
+    OffLineTime=OFF_LINE_TIME;
+    //http_send("machineid=01201409101830150001&operation=1&starttime=100000&endtime=103000&level=1.2L&temp=80C&boil=0&purify=1&keepwarm=25");
+    bFlagOK=0;
+  }
+  
+}
+
+void DataReturn(u8 num)
+{
+  u8 data_buffer[10];
+  u16 i;
+  if(Connect_Service==0)
+  {
+   switch(num)
+   {
+    case 1:   memset(UartSend_Buffer3,0,sizeof(UartSend_Buffer3));
+            strcat(UartSend_Buffer3,"&&KEY2=1&ORDEROK\r\n");
+            break;
+        
+    case 2:   memset(UartSend_Buffer3,0,sizeof(UartSend_Buffer3));
+            strcat(UartSend_Buffer3,"&&KEY2=2&CANCELORDEROK\r\n");
+            break;
+             
+    case 3:   memset(UartSend_Buffer3,0,sizeof(UartSend_Buffer3));
+            strcat(UartSend_Buffer3,"&&KEY2=3&LEVEL=");
+            
+            memset(data_buffer,0,sizeof(data_buffer));  //L
+            data_buffer[0]=WaterWeight/10+0x30;
+            data_buffer[1]='.';
+            data_buffer[2]=WaterWeight%10+0x30;            
+            strcat(UartSend_Buffer3,data_buffer);
+            
+            strcat(UartSend_Buffer3,"L&TEMP=");
+            
+            memset(data_buffer,0,sizeof(data_buffer));  //C
+            if(WaterTemp>=100)
+            {
+              data_buffer[0]=WaterTemp/100 + 0x30;
+              data_buffer[1]=WaterTemp%100/10 +0x30;
+              data_buffer[2]=WaterTemp%10 + 0x30;
+            }
+            else if(WaterTemp>=10)
+            {
+              data_buffer[0]=WaterTemp/10 +0x30;
+              data_buffer[1]=WaterTemp%10 + 0x30;
+            }
+            else
+            {
+              data_buffer[0]=WaterTemp%10 +0x30;
+            }
+            strcat(UartSend_Buffer3,data_buffer);
+            
+            strcat(UartSend_Buffer3,"C&STATE=");
+            memset(data_buffer,0,sizeof(data_buffer));  //state
+            data_buffer[0]=Mystate + 0x30;
+            strcat(UartSend_Buffer3,data_buffer);
+            
+            strcat(UartSend_Buffer3,"&STATETIME=");
+            memset(data_buffer,0,sizeof(data_buffer));  //STATETIME
+            data_buffer[0]=0x30+StateTime/1000;
+            data_buffer[1]=0x30+StateTime%1000/100;
+            data_buffer[2]=0x30+StateTime%1000%100/10;
+            data_buffer[3]=0x30+StateTime%10;            
+            strcat(UartSend_Buffer3,data_buffer);
+            
+            strcat(UartSend_Buffer3,"S&ID=");            //phoneID
+            strncat(UartSend_Buffer3,PhoneID,36);
+            strcat(UartSend_Buffer3,"\r\n");
+            break;
+            
+    case 4:   memset(UartSend_Buffer3,0,sizeof(UartSend_Buffer3));
+            strcat(UartSend_Buffer3,"&&KEY2=4&HEAT_COMPLETE&ID=");
+            strncat(UartSend_Buffer3,PhoneID,36);
+            strcat(UartSend_Buffer3,"\r\n");
+            break;
+            
+    case 5:   memset(UartSend_Buffer3,0,sizeof(UartSend_Buffer3));
+            strcat(UartSend_Buffer3,"&&KEY2=5&LEVEL=");
+            
+            memset(data_buffer,0,sizeof(data_buffer));  //L
+            data_buffer[0]=WaterWeight/10+0x30;
+            data_buffer[1]='.';
+            data_buffer[2]=WaterWeight%10+0x30;            
+            strcat(UartSend_Buffer3,data_buffer);
+            strcat(UartSend_Buffer3,"L&TEMP=");
+            
+            memset(data_buffer,0,sizeof(data_buffer));  //C
+            if(WaterTemp>=100)
+            {
+              data_buffer[0]=WaterTemp/100 + 0x30;
+              data_buffer[1]=WaterTemp%100/10 +0x30;
+              data_buffer[2]=WaterTemp%10 + 0x30;
+            }
+            else if(WaterTemp>=10)
+            {
+              data_buffer[0]=WaterTemp/10 +0x30;
+              data_buffer[1]=WaterTemp%10 + 0x30;
+            }
+            else
+            {
+              data_buffer[0]=WaterTemp%10 +0x30;
+            }
+            strcat(UartSend_Buffer3,data_buffer);
+            
+            strcat(UartSend_Buffer3,"C&HUB=");            
+            memset(data_buffer,0,sizeof(data_buffer)); //hub
+            data_buffer[0]=TeaPotHub + 0x30;
+            strcat(UartSend_Buffer3,data_buffer);
+            
+            strcat(UartSend_Buffer3,"&STATE=");        //state
+            memset(data_buffer,0,sizeof(data_buffer));  
+            data_buffer[0]=Mystate + 0x30;
+            strcat(UartSend_Buffer3,data_buffer);
+            
+            strcat(UartSend_Buffer3,"&LASTTIME=");    //LastTime            
+            strcat(UartSend_Buffer3,LastTime); 
+            
+            strcat(UartSend_Buffer3,"&ID=");          //phoneID
+            strncat(UartSend_Buffer3,PhoneID,36);
+            
+            strcat(UartSend_Buffer3,"&MACHINEID=");  //MACHINEID
+            strncat(UartSend_Buffer3,MachineID,20);
+            
+            strcat(UartSend_Buffer3,"\r\n");
+            break;
+            
+            
+    case 6:   memset(UartSend_Buffer3,0,sizeof(UartSend_Buffer3));
+            strcat(UartSend_Buffer3,"&&KEY2=6&STOPHEAT\r\n");
+            break;
+            
+    case 7:   memset(UartSend_Buffer3,0,sizeof(UartSend_Buffer3));
+            strcat(UartSend_Buffer3,"&&KEY2=7&GET_TIME\r\n");
+            break;
+            
+    case 8:  memset(UartSend_Buffer3,0,sizeof(UartSend_Buffer3));
+            strcat(UartSend_Buffer3,"&&KEY2=8&OK\r\n");
+            break;
+    default:
+            break;
+    
+    }
+   
+    i=0;
+    while(UartSend_Buffer3[i]!=0)
+    {
+      USART_SendData(USART2, UartSend_Buffer3[i]);
+      i++;
+      while(USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET);
+    }
+  }
+  
+  else if(Connect_Service==1)
+  {
+    u8 StatusBuff[300];
+    switch(num)
+    {
+      case 1:       // 注册；
+                 memset(StatusBuff,0,sizeof(StatusBuff));  //machineid
+                 strcat(StatusBuff,"machineid="); 
+                 strncat(StatusBuff,MachineID,20);
+                 http_send(StatusBuff,"/machine/reg");
+                 break;
+                 
+      case 3:         //返回当前状态  
+                 memset(StatusBuff,0,sizeof(StatusBuff));  //machineid
+                 strcat(StatusBuff,"machineid="); 
+                 strncat(StatusBuff,MachineID,20); 
+                 
+                 strcat(StatusBuff,"&appid=");              //appid 
+                 strncat(StatusBuff,PhoneID,36);                  
+                 
+                 strcat(StatusBuff,"&level=");              //level  
+                 memset(data_buffer,0,sizeof(data_buffer));  
+                 data_buffer[0]=WaterWeight/10+0x30;
+                 data_buffer[1]='.';
+                 data_buffer[2]=WaterWeight%10+0x30;            
+                 strcat(StatusBuff,data_buffer);
+                 
+                 strcat(StatusBuff,"L&temp=");               //temp
+                 memset(data_buffer,0,sizeof(data_buffer));  
+                 if(WaterTemp>=100)
+                 {
+                   data_buffer[0]=WaterTemp/100 + 0x30;
+                   data_buffer[1]=WaterTemp%100/10 +0x30;
+                   data_buffer[2]=WaterTemp%10 + 0x30;
+                 }
+                 else if(WaterTemp>=10)
+                 {
+                   data_buffer[0]=WaterTemp/10 +0x30;
+                   data_buffer[1]=WaterTemp%10 + 0x30;
+                 }
+                 else
+                 {
+                   data_buffer[0]=WaterTemp%10 +0x30;
+                 }
+                 strcat(StatusBuff,data_buffer);
+                 
+                 strcat(StatusBuff,"C&hub=");               //hub
+                 memset(data_buffer,0,sizeof(data_buffer)); 
+                 data_buffer[0]=TeaPotHub + 0x30;
+                 strcat(StatusBuff,data_buffer);
+                 
+                 strcat(StatusBuff,"&state=");            //state
+                 memset(data_buffer,0,sizeof(data_buffer));  
+                 data_buffer[0]=Mystate + 0x30;
+                 strcat(StatusBuff,data_buffer);
+                 
+                 http_send(StatusBuff,"/teapot/updatestate");
+                 break;
+                 
+
+      case 2:    //使用记录
+                 memset(StatusBuff,0,sizeof(StatusBuff));            //machineid
+                 strcat(StatusBuff,"machineid="); 
+                 strncat(StatusBuff,MachineID,20); 
+                 
+                 strcat(StatusBuff,"&appid=");                       //appid
+                 if(strlen(RecordTable[0].PhoneID)==0)
+                   strncat(StatusBuff,PhoneID,36);
+                 else
+                   strncat(StatusBuff,RecordTable[0].PhoneID,36);  
+                 
+                 strcat(StatusBuff,"&operation=");                  //opration
+                 memset(data_buffer,0,sizeof(data_buffer)); 
+                 data_buffer[0]=RecordTable[0].operation + 0x30;
+                 strcat(StatusBuff,data_buffer);
+                 
+                 strcat(StatusBuff,"&starttime=");                  //starttime
+                 strcat(StatusBuff,RecordTable[0].starttime); 
+                 
+                 strcat(StatusBuff,"&endtime=");                   //endtime
+                 strcat(StatusBuff,RecordTable[0].endtime); 
+                                  
+                 strcat(StatusBuff,"&level=");                     //level  
+                 memset(data_buffer,0,sizeof(data_buffer));  
+                 data_buffer[0]=RecordTable[0].level/10+0x30;
+                 data_buffer[1]='.';
+                 data_buffer[2]=RecordTable[0].level%10+0x30;            
+                 strcat(StatusBuff,data_buffer);
+                 
+                 strcat(StatusBuff,"L&temp=");                   //temp
+                 memset(data_buffer,0,sizeof(data_buffer));  
+                 if(RecordTable[0].temp>=100)
+                 {
+                   data_buffer[0]=RecordTable[0].temp/100 + 0x30;
+                   data_buffer[1]=RecordTable[0].temp%100/10 +0x30;
+                   data_buffer[2]=RecordTable[0].temp%10 + 0x30;
+                 }
+                 else if(RecordTable[0].temp>=10)
+                 {
+                   data_buffer[0]=RecordTable[0].temp/10 +0x30;
+                   data_buffer[1]=RecordTable[0].temp%10 + 0x30;
+                 }
+                 else
+                 {
+                   data_buffer[0]=RecordTable[0].temp%10 +0x30;
+                 }
+                 strcat(StatusBuff,data_buffer);
+                 
+                 strcat(StatusBuff,"C&boil=");               //boil
+                 memset(data_buffer,0,sizeof(data_buffer)); 
+                 data_buffer[0]=RecordTable[0].boil + 0x30;
+                 strcat(StatusBuff,data_buffer);
+                 
+                 strcat(StatusBuff,"&purify=");            //purify
+                 if(RecordTable[0].purify>=10)
+                 {
+                   data_buffer[0]=RecordTable[0].purify/10 + 0x30;
+                   data_buffer[1]=RecordTable[0].purify%10 + 0x30;
+                 }
+                 else
+                   data_buffer[0]=RecordTable[0].purify + 0x30;
+                 strcat(StatusBuff,data_buffer);
+                 
+                 
+                 strcat(StatusBuff,"&keepwarm=");            //keepwarm
+                 memset(data_buffer,0,sizeof(data_buffer));  
+                 if(RecordTable[0].keepwarm>=10)
+                 {
+                   data_buffer[0]=RecordTable[0].keepwarm/10 + 0x30;
+                   data_buffer[1]=RecordTable[0].keepwarm%10 + 0x30;
+                 }
+                 else
+                   data_buffer[0]=RecordTable[0].keepwarm + 0x30;
+                 
+                 strcat(StatusBuff,data_buffer);
+                 
+                 strcat(StatusBuff,"&energy=");            //energy
+                 memset(data_buffer,0,sizeof(data_buffer));  
+                 i=0;
+                 if((RecordTable[0].energy/10000)>0)
+                 {
+                   data_buffer[i]=RecordTable[0].energy/10000 + 0x30;
+                   i++;
+                 }                 
+                 data_buffer[i]=RecordTable[0].energy%10000/1000 + 0x30;
+                 i++;                 
+                 data_buffer[i]='.';
+                 i++;                 
+                 data_buffer[i]=RecordTable[0].energy%1000/100 + 0x30;
+                 i++;                 
+                 data_buffer[i]=RecordTable[0].energy%100/10 + 0x30;
+                 i++;                 
+                 data_buffer[i]=RecordTable[0].energy%10 + 0x30;
+                 i++;                 
+                 data_buffer[i]='K';
+                 i++;
+                 data_buffer[i]='W';
+                 i++;
+                 strcat(StatusBuff,data_buffer); 
+                 
+                 http_send(StatusBuff,"/teapot/actionlog");
+                 break;
+                 
+      case 4:    //获取请求
+                 memset(StatusBuff,0,sizeof(StatusBuff));  //machineid
+                 strcat(StatusBuff,"machineid="); 
+                 strncat(StatusBuff,MachineID,20);
+                 
+                 strcat(StatusBuff,"&page=1&pagesize=1"); 
+                 
+                 http_send(StatusBuff,"/teapot/request");
+                 break;
+                
+      case 5:   //返回请求结果1
+                 memset(StatusBuff,0,sizeof(StatusBuff));  //machineid
+                 strcat(StatusBuff,"machineid="); 
+                 strncat(StatusBuff,MachineID,20);
+                 
+                 strcat(StatusBuff,"&orderid="); 
+                 strncat(StatusBuff,Orderid,16);
+                 
+                 strcat(StatusBuff,"&result=orderok"); 
+                 
+                 http_send(StatusBuff,"/teapot/requestresult");
+                 break;
+             
+      case 6:   //返回请求结果1
+                 memset(StatusBuff,0,sizeof(StatusBuff));  //machineid
+                 strcat(StatusBuff,"machineid="); 
+                 strncat(StatusBuff,MachineID,20);
+                 
+                 strcat(StatusBuff,"&orderid="); 
+                 strncat(StatusBuff,Orderid,16);
+                 
+                 strcat(StatusBuff,"&result=cancelorderok"); 
+                 
+                 http_send(StatusBuff,"/teapot/requestresult");
+                 break;
+                 
+      case 7:    memset(StatusBuff,0,sizeof(StatusBuff));  //machineid
+                 strcat(StatusBuff,"machineid="); 
+                 strncat(StatusBuff,MachineID,20);
+                 
+                 strcat(StatusBuff,"&appid=");              //appid 
+                 strncat(StatusBuff,PhoneID,36); 
+                 
+                 strcat(StatusBuff,"&orderid=");            // orderid
+                 strncat(StatusBuff,Orderid,16);
+                 
+                 strcat(StatusBuff,"&state=");             //state
+                 memset(data_buffer,0,sizeof(data_buffer));  
+                 data_buffer[0]=OrderOperState + 0x30;
+                 strcat(StatusBuff,data_buffer);
+                 
+                 http_send(StatusBuff,"/teapot/runtime");
+                 break;
+                 
+                 
+      default:
+                 break;
+    }
+  }
+  
+  
+  
+}
+ 
+void http_send(u8 *sendbuf,u8 *path)
+{
+  u16 length,i;
+  u8 data_buffer[4];
+  
+  memset(UartSend_Buffer3,0,sizeof(UartSend_Buffer3));
+  
+  strcat(UartSend_Buffer3,"POST ");
+  strcat(UartSend_Buffer3, path);
+  strcat(UartSend_Buffer3," HTTP/1.1\r\n");
+  strcat(UartSend_Buffer3,"Host: 121.40.70.170:8081\r\n");
+  strcat(UartSend_Buffer3,"Content-Type: application/x-www-form-urlencoded\r\n");
+  strcat(UartSend_Buffer3,"Content-Length: ");
+  length=strlen(sendbuf);
+  memset(data_buffer,0,sizeof(data_buffer));  //data length
+  if(length>=100)
+  {
+    data_buffer[0]=length/100 + 0x30;
+    data_buffer[1]=length%100/10 +0x30;
+    data_buffer[2]=length%10 + 0x30;
+  }
+  else if(length>=10)
+  {
+    data_buffer[0]=length/10 +0x30;
+    data_buffer[1]=length%10 + 0x30;
+  }
+  else
+  {
+    data_buffer[0]=length%10 +0x30;
+  }
+  
+  strcat(UartSend_Buffer3,data_buffer);
+  strcat(UartSend_Buffer3,"\r\n");
+  strcat(UartSend_Buffer3,"Connection: close\r\n\r\n");
+  
+  strncat(UartSend_Buffer3,sendbuf,250);
+  
+  
+  i=0;
+  while(UartSend_Buffer3[i]!=0)
+  {
+    USART_SendData(USART2, UartSend_Buffer3[i]);
+    i++;
+    while(USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET);
+  }
+}
+
+void Rst_Value(void)
+{
+  RELAY(0);
+  RelayOn=0;
+  Heat=0;
+  Purify=0;
+  Boil=0;
+  Warmheat=0;
+  HeatCRC=0;
+  Warm=0;
+  EnCool=0;
+  Warmtemp=0;
+  WarmEnable=0;
+  WarmTime=0;
+  Mystate=0;
+  HeatCRCTime=0;
+  WarmOK=0;
+  Telecontrol=0;
+  Keycontrol=0;
+  LIGHTHEATOFF;
+  StateTime=0;
+  OrderOperState=0;
+}
+
+void set_mode(u8 mode)
+{
+    cmdmode=1;  
+    DelayN10ms(100); 
+    UART2_Send_Missage("+++");
+    DelayN10ms(50); 
+    
+    while(ModeReadOk==0)
+    {
+      UART2_Send_Missage("setmode");
+      DelayN10ms(30);
+    }
+    ModeReadOk=0;
+    
+    if(mode!=WifiMode)
+    {
+      if(mode==0)
+        UART2_Send_Missage("setmode 0");
+      else if(mode==1)
+        UART2_Send_Missage("setmode 1");
+      DelayN10ms(20);
+    
+      UART2_Send_Missage("saveconfig");
+      DelayN10ms(100);
+    
+      UART2_Send_Missage("reboot");
+      DelayN10ms(100);
+      DelayN10ms(100);
+      WaitConnect();
+    } 
+    else
+    {
+      while(WifiConnectok==0)
+      {
+        UART2_Send_Missage("connstatus");
+        DelayN10ms(50);   
+      }
+      WifiConnectok=0;
+      UART2_Send_Missage("quit");
+      DelayN10ms(20);     
+    }
+    cmdmode=0;    
+    OffLineTime=OFF_LINE_TIME;
+    Connect_Service=mode;
+}
+
+void DelayN10ms(u16 time)
+{
+  DelayNum10ms=time;
+  while(DelayNum10ms!=0);
+}
+
+void WaitConnect(void)
+{
+    u16 k;
+    
+    cmdmode=1;
+    DelayN10ms(700);
+    UART2_Send_Missage("+++");
+    DelayN10ms(50);
+    k=0;
+    while(WifiConnectok==0)
+    {
+      UART2_Send_Missage("connstatus");
+      DelayN10ms(50);
+      k++;
+      if(k>=120)    //1min
+      {
+        WifiLedCtl(0);
+        break;
+      }        
+      if(Factor_Set_Sign==1)
+        break;
+    }
+    WifiLedCtl(1);
+    WifiConnectok=0;
+    UART2_Send_Missage("quit");
+    DelayN10ms(20);
+    
+    cmdmode=0;
+}
+
+
+/**
+  * @brief  从I2C1总线上的某一器件的某一起始地址中读取一定字节的数据到数组中
+  * @param  driver_Addr：I2C器件地址
+  * @param  start_Addr：起始字节地址
+  * @param  number_Bytes：要读取的字节数量（小于一页）
+  * @param  read_Buffer：存放读取数据的数组指针
+  * @retval 是否读取成功
+  */
+u8 I2C1_Read_NBytes(u8 driver_Addr, u8 start_Addr, u8 number_Bytes, u8 *read_Buffer)
+{
+  uint8_t read_Num;
+  u8 I2C_Timeout;
+  
+  I2C_Timeout = 200;
+  while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY) != RESET)
+  {
+    if((I2C_Timeout--) == 0)
+    {
+      return 1;
+    }
+  }
+  I2C_TransferHandling(I2C1, driver_Addr, 1, I2C_SoftEnd_Mode, I2C_Generate_Start_Write);  //I2C_No_StartStop I2C_Generate_Start_Write
+  I2C_Timeout = 200;
+  while(I2C_GetFlagStatus(I2C1, I2C_FLAG_TXIS) == RESET)
+  {
+    if((I2C_Timeout--) == 0)
+    {
+      return 1;
+    }
+  }
+  
+  I2C_SendData(I2C1, start_Addr);
+  I2C_Timeout = 200;
+  while(I2C_GetFlagStatus(I2C1, I2C_FLAG_TC) == RESET)
+  {
+    if((I2C_Timeout--) == 0)
+    {
+      return 1;
+    }
+  }  
+
+  
+  I2C_TransferHandling(I2C1, driver_Addr, number_Bytes,  I2C_AutoEnd_Mode, I2C_Generate_Start_Read);
+  
+  for(read_Num = 0; read_Num<number_Bytes; read_Num++)
+  {
+    I2C_Timeout = 200;
+    while(I2C_GetFlagStatus(I2C1, I2C_FLAG_RXNE) == RESET)
+    {
+      if((I2C_Timeout--) == 0)
+      {
+        return 1;
+      }
+    }      
+    read_Buffer[read_Num] = I2C_ReceiveData(I2C1);
+  }  
+  I2C_Timeout = 200;
+  while(I2C_GetFlagStatus(I2C1, I2C_FLAG_STOPF) == RESET);
+  {
+    if((I2C_Timeout--) == 0)
+    {
+      return 1;
+    }
+  }
+ 
+  return 0;
+}
+
+/**
+  * @brief  从I2C1的总线上的某一器件的某一起始地址中读取一定字节的数据到数组中
+  * @param  driver_Addr：I2C器件地址
+  * @param  start_Addr：起始字节地址
+  * @param  number_Bytes：要读取的字节数量（小于一页）
+  * @param  write_Buffer：存放读取数据的数组指针
+  * @retval 是否读取成功
+  */
+u8 I2C1_Write_NBytes(u8 driver_Addr, u8 start_Addr, u8 number_Bytes, u8 *write_Buffer)
+{
+  u8 write_Num;
+  u8 I2C_Timeout;
+  
+  I2C_Timeout = 200;
+  while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY) != RESET)
+  {
+    if((I2C_Timeout--) == 0)
+    {
+      //I2C_ClearFlag(I2C1, I2C_FLAG_BUSY);
+      return 1;
+    }
+  }
+  I2C_TransferHandling(I2C1, driver_Addr, number_Bytes+1, I2C_AutoEnd_Mode, I2C_Generate_Start_Write);
+  I2C_Timeout = 200;
+  while(I2C_GetFlagStatus(I2C1, I2C_FLAG_TXIS) == RESET)
+  {
+    if((I2C_Timeout--) == 0)
+    {
+      return 1;
+    }
+  }
+  
+  I2C_SendData(I2C1, start_Addr);
+  //while(I2C_GetFlagStatus(I2C1, I2C_FLAG_TXIS) == RESET);
+ 
+  //I2C_TransferHandling(I2C1, driver_Addr, number_Bytes, I2C_AutoEnd_Mode, I2C_No_StartStop);  
+  for(write_Num = 0; write_Num<number_Bytes; write_Num++)
+  {
+    I2C_Timeout = 200;
+    while(I2C_GetFlagStatus(I2C1, I2C_FLAG_TXIS) == RESET)
+    {      
+      if((I2C_Timeout--) == 0)
+      {
+        return 1;
+      }
+    }
+    I2C_SendData(I2C1, write_Buffer[write_Num]);    
+  }
+ 
+  I2C_Timeout = 200;
+  while(I2C_GetFlagStatus(I2C1, I2C_FLAG_STOPF) == RESET)
+  {
+    if((I2C_Timeout--) == 0)
+    {
+      return 1;
+    }
+  }
+ 
+  return 0;
+}
+
+
+void Init_IQS333(void)
+{
+    u8 data_buffer[20];	
+    
+    while(GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_5)==1);
+    while(I2C1_Read_NBytes(IQS333_ADDR, PROD_VERSION_NUM, 2, &data_buffer[0])!=0);
+    delay(50);
+    /* Proximity Threshold  && Touch Threshold  接近阈&&接触阈*/
+    data_buffer[0] = 0x10;   //Proximity Threshold    
+    data_buffer[1] = 0x10;   //K1 Touch Threshold
+    data_buffer[2] = 0x0b;   //K2
+    data_buffer[3] = 0x10;
+    data_buffer[4] = 0x12;
+    data_buffer[5] = 0x14;
+    data_buffer[6] = 0x12;   //K6
+    while(GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_5)==1);
+    while(I2C1_Write_NBytes(IQS333_ADDR, Thresholds_value, 7, &data_buffer[0])!=0);
+    delay(20);
+    // set active channels on iqs333 CH0 CH1 CH2 CH3 CH4 CH5 CH6
+    data_buffer[0] = 0x7F;
+    data_buffer[1] = 0x00;
+    while(GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_5)==1);
+    while(I2C1_Write_NBytes(IQS333_ADDR, ACTIVE_CHANNELS, 2, &data_buffer[0])!=0);
+    delay(20);
+
+    //Sys_FLAGS0
+    //data_buffer[0]=0;
+    //I2C1_Write_NBytes(IQS333_ADDR, Sys_FLAGS0, 1, &data_buffer[0]);
+
+     //re-ati
+    //also switch off the wdt and the i2c timout for now
+    //switch off ati for now
+    data_buffer[0] = 0x16;
+    data_buffer[1] = 0x20;
+    data_buffer[2] = 0x48;
+    data_buffer[3] = 0x80;          // switch to 11-bit mode
+    while(GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_5)==1);
+    while(I2C1_Write_NBytes(IQS333_ADDR, PROX_SETTINGS, 4, &data_buffer[0])!=0);
+    delay(20);
+
+   /* wait until the ATI algorithm is done */
+    do
+    {
+        //DelayN10ms (2);  
+        delay(20);
+        while(GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_5)==1);
+        I2C1_Read_NBytes(IQS333_ADDR, Sys_FLAGS0, 1, &data_buffer[0]);        
+    }
+    while ((data_buffer[0] & 0x04) == 0x04);	
+    //pwm led init
+    //I2C1_Write_NBytes(IQS333_ADDR, PWM_DUTY, 8, &LED_Buff[0]);
+    //delay(100);
+    //Leddisp(All_LIGHT_ON,1);
+      
+}
+
+
+#ifdef  DEBUG
+/*******************************************************************************
+* Function Name  : assert_failed
+* Description    : Reports the name of the source file and the source line number
+*                  where the assert_param error has occurred.
+* Input          : - file: pointer to the source file name
+*                  - line: assert_param error line source number
+* Output         : None
+* Return         : None
+*******************************************************************************/
+void assert_failed(u8* file, u32 line)
+{
+  /* User can add his own implementation to report the file name and line number,
+     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+
+  /* Infinite loop */
+  while (1)
+  {
+  }
+}
+#endif
+
+/******************* (C) COPYRIGHT 2007 STMicroelectronics *****END OF FILE****/
